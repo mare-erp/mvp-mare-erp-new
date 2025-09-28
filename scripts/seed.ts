@@ -6,6 +6,18 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Iniciando seed do banco de dados...');
 
+  // Deletar dados existentes na ordem correta para evitar erros de chave estrangeira
+  await prisma.itemPedido.deleteMany({});
+  await prisma.pedido.deleteMany({});
+  await prisma.cliente.deleteMany({});
+  await prisma.produto.deleteMany({});
+  await prisma.membroOrganizacao.deleteMany({});
+  await prisma.usuario.deleteMany({});
+  await prisma.empresa.deleteMany({});
+  await prisma.organizacao.deleteMany({});
+
+  console.log('Dados existentes deletados.');
+
   // Criar organização primeiro
   const organizacao = await prisma.organizacao.create({
     data: {
@@ -32,8 +44,7 @@ async function main() {
     data: {
       email: 'admin@teste.com',
       nome: 'Administrador',
-      senha: senhaHash,
-      empresaId: empresa.id,
+      senhaHash: senhaHash,
     },
   });
 
@@ -138,7 +149,7 @@ async function main() {
       data: {
         empresaId: empresa.id,
         clienteId: clientes[0].id,
-        vendedorId: usuario.id,
+        usuarioId: usuario.id,
         numeroPedido: 1,
         status: 'VENDIDO',
         valorTotal: 350.00,
@@ -150,7 +161,7 @@ async function main() {
       data: {
         empresaId: empresa.id,
         clienteId: clientes[1].id,
-        vendedorId: usuario.id,
+        usuarioId: usuario.id,
         numeroPedido: 2,
         status: 'ORCAMENTO',
         valorTotal: 750.00,
@@ -162,7 +173,7 @@ async function main() {
       data: {
         empresaId: empresa.id,
         clienteId: clientes[2].id,
-        vendedorId: usuario.id,
+        usuarioId: usuario.id,
         numeroPedido: 3,
         status: 'RECUSADO',
         valorTotal: 200.00,

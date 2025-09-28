@@ -162,6 +162,7 @@ model Usuario {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   organizacoes      MembroOrganizacao[]
+  pedidos           Pedido[]
   auditoria         LogAuditoria[]
 }
 
@@ -259,6 +260,11 @@ model Pedido {
   
   clienteId            String
   cliente              Cliente               @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+
+  usuarioId            String
+  usuario              Usuario               @relation(fields: [usuarioId], references: [id])
+
+
 
   
   itens                ItemPedido[]

@@ -3,3 +3,6 @@ node_modules
 
 # Ignora a pasta de build do Next.js
 .next
+
+# Ignora arquivos de ambiente
+.env
