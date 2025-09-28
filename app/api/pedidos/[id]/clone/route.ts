@@ -16,7 +16,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     const token = cookieStore.get('auth-token')?.value;
     if (!token) return NextResponse.json({ message: 'Não autorizado' }, { status: 401 });
 
-    const { empresaId, userId: vendedorId } = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
+    const { empresaId, userId: usuarioId } = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
 
     // Buscar o pedido original
     const pedidoOriginal = await prisma.pedido.findFirst({
@@ -46,7 +46,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         data: {
           empresaId,
           clienteId: pedidoOriginal.clienteId,
-          vendedorId, // Usar o vendedor atual (quem está clonando)
+          usuarioId, // Usar o vendedor atual (quem está clonando)
           status: StatusPedido.ORCAMENTO, // Sempre criar como orçamento
           numeroPedido: novoNumeroPedido,
           valorTotal: pedidoOriginal.valorTotal,
@@ -71,7 +71,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         where: { id: pedido.id },
         include: {
           cliente: { select: { nome: true } },
-          vendedor: { select: { nome: true } },
+          usuario: { select: { nome: true } },
           itens: true
         }
       });

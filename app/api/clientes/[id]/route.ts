@@ -1,14 +1,9 @@
 
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
 import { z } from 'zod';
 import { TipoPessoa } from '@prisma/client';
-
-interface TokenPayload {
-  empresaId: string;
-}
+import { withAuth, AuthContext } from '@/app/lib/auth';
 
 const clienteSchema = z.object({
   nome: z.string().min(2, 'O Nome / Razão Social é obrigatório.').optional(),
@@ -34,17 +29,12 @@ const clienteSchema = z.object({
     path: ["cpfCnpj"],
 });
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+async function getHandler(request: NextRequest, { params, context }: { params: { id: string }, context: AuthContext }) {
   try {
-    const cookieStore = cookies();
-    const token = cookieStore.get('auth-token')?.value;
-    if (!token) return NextResponse.json({ message: 'Não autorizado' }, { status: 401 });
-
-    const { empresaId } = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
     const { id } = params;
 
     const cliente = await prisma.cliente.findUnique({
-      where: { id, empresaId },
+      where: { id, empresaId: context.empresaId },
     });
 
     if (!cliente) {
@@ -58,13 +48,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+async function putHandler(request: NextRequest, { params, context }: { params: { id: string }, context: AuthContext }) {
   try {
-    const cookieStore = cookies();
-    const token = cookieStore.get('auth-token')?.value;
-    if (!token) return NextResponse.json({ message: 'Não autorizado' }, { status: 401 });
-
-    const { empresaId } = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
     const { id } = params;
     const body = await request.json();
     const validation = clienteSchema.safeParse(body);
@@ -75,7 +60,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     
     const data = validation.data;
 
-    const existingCliente = await prisma.cliente.findUnique({ where: { id, empresaId } });
+    const existingCliente = await prisma.cliente.findUnique({ where: { id, empresaId: context.empresaId } });
     if (!existingCliente) {
       return NextResponse.json({ message: 'Cliente não encontrado.' }, { status: 404 });
     }
@@ -83,7 +68,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     // Lógica para evitar duplicidade de CPF/CNPJ se ele for fornecido e diferente do atual
     if (data.cpfCnpj && data.cpfCnpj !== existingCliente.cpfCnpj) {
         const duplicateCliente = await prisma.cliente.findFirst({
-            where: { cpfCnpj: data.cpfCnpj, empresaId: empresaId }
+            where: { cpfCnpj: data.cpfCnpj, empresaId: context.empresaId }
         });
         if (duplicateCliente) {
             return NextResponse.json({ message: 'Um cliente com este CPF/CNPJ já existe.' }, { status: 409 });
@@ -91,7 +76,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
 
     const updatedCliente = await prisma.cliente.update({
-      where: { id, empresaId },
+      where: { id, empresaId: context.empresaId },
       data: {
         ...data,
         email: data.email === '' ? null : data.email, // Tratar string vazia para email como null
@@ -107,17 +92,12 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+async function deleteHandler(request: NextRequest, { params, context }: { params: { id: string }, context: AuthContext }) {
   try {
-    const cookieStore = cookies();
-    const token = cookieStore.get('auth-token')?.value;
-    if (!token) return NextResponse.json({ message: 'Não autorizado' }, { status: 401 });
-
-    const { empresaId } = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
     const { id } = params;
 
     const existingCliente = await prisma.cliente.findUnique({ 
-      where: { id, empresaId },
+      where: { id, empresaId: context.empresaId },
       include: {
         pedidos: true,
       },
@@ -136,7 +116,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     }
 
     await prisma.cliente.delete({
-      where: { id, empresaId },
+      where: { id, empresaId: context.empresaId },
     });
 
     return NextResponse.json({ message: 'Cliente excluído com sucesso.' });
@@ -146,3 +126,17 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
   }
 }
 
+export const GET = withAuth(
+  (req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) => getHandler(req, { params, context }),
+  { requireCompany: true }
+);
+
+export const PUT = withAuth(
+  (req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) => putHandler(req, { params, context }),
+  { requireCompany: true }
+);
+
+export const DELETE = withAuth(
+  (req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) => deleteHandler(req, { params, context }),
+  { requireCompany: true }
+);

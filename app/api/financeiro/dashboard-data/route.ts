@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
-import { verifyAuth } from '@/app/lib/verifyAuth';
+import { withAuth, AuthContext } from '@/app/lib/auth';
 
-export async function GET(request: NextRequest) {
+async function getHandler(request: NextRequest, context: AuthContext) {
   try {
-    const authResult = await verifyAuth(request);
-    if (!authResult.success) {
-      return NextResponse.json({ error: authResult.error }, { status: 401 });
-    }
+    const { searchParams } = new URL(request.url);
+    // O empresaId vem do contexto de autenticação ou do query param
+    const empresaId = searchParams.get('empresaId') || context.empresaId;
 
-    const { empresaId } = authResult;
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -18,7 +16,7 @@ export async function GET(request: NextRequest) {
     // Buscar transações do mês atual
     const transacoesMes = await prisma.transacaoFinanceira.findMany({
       where: {
-        empresaId,
+        empresaId: empresaId,
         dataVencimento: {
           gte: startOfMonth,
           lte: endOfMonth,
@@ -50,7 +48,7 @@ export async function GET(request: NextRequest) {
     // Contas vencendo nos próximos 7 dias
     const contasVencendo = await prisma.transacaoFinanceira.count({
       where: {
-        empresaId,
+        empresaId: empresaId,
         status: 'PENDENTE',
         dataVencimento: {
           gte: now,
@@ -61,18 +59,30 @@ export async function GET(request: NextRequest) {
 
     // Fluxo mensal dos últimos 6 meses
     const fluxoMensal = [];
+    const startOfSixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+    const allRecentTransacoes = await prisma.transacaoFinanceira.findMany({
+      where: {
+        empresaId: empresaId,
+        dataVencimento: {
+          gte: startOfSixMonthsAgo,
+          lte: endOfMonth, // Ensure it covers up to the end of the current month
+        },
+      },
+      select: {
+        dataVencimento: true,
+        tipo: true,
+        valor: true,
+      },
+    });
+
     for (let i = 5; i >= 0; i--) {
       const mesData = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const proximoMes = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
       
-      const transacoesMesAtual = await prisma.transacaoFinanceira.findMany({
-        where: {
-          empresaId,
-          dataVencimento: {
-            gte: mesData,
-            lte: proximoMes,
-          },
-        },
+      const transacoesMesAtual = allRecentTransacoes.filter(t => {
+        const dataVencimento = new Date(t.dataVencimento);
+        return dataVencimento >= mesData && dataVencimento < proximoMes;
       });
 
       const entradas = transacoesMesAtual
@@ -116,3 +126,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Protegendo a rota com o novo HOC de autenticação
+export const GET = withAuth(getHandler, {
+  // Exige que o usuário esteja associado a uma empresa para acessar esta rota
+  requireCompany: true, 
+});

@@ -22,7 +22,7 @@ export const POST = withAuth(
         },
         include: {
           cliente: true,
-          vendedor: {
+          usuario: {
             select: {
               nome: true,
               email: true
@@ -452,8 +452,8 @@ function generatePdfHtml(pedido: any): string {
         <div class="section">
           <div class="section-title">Vendedor Responsável</div>
           <div class="seller-info">
-            <div><strong>Nome:</strong> ${pedido.vendedor.nome}</div>
-            <div><strong>Email:</strong> ${pedido.vendedor.email}</div>
+            <div><strong>Nome:</strong> ${pedido.usuario.nome}</div>
+            <div><strong>Email:</strong> ${pedido.usuario.email}</div>
           </div>
         </div>
         

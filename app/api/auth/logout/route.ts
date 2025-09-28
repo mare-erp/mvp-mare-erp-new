@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { logAuditoria, verifyToken } from '@/app/lib/verifyAuth';
+import { logAuditoria, verifyToken } from '@/app/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {

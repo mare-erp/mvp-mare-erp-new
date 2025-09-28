@@ -1,19 +1,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
-import { verifyAuth } from '@/app/lib/verifyAuth';
+import { withAuth, AuthContext } from '@/app/lib/auth';
 
-export async function GET(
+async function getHandler(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params, context }: { params: { id: string }, context: AuthContext }
 ) {
   try {
-    const authResult = await verifyAuth(request);
-    if (!authResult.success) {
-      return NextResponse.json({ error: authResult.error }, { status: 401 });
-    }
-
-    const { empresaId } = authResult;
+    const { empresaId } = context;
     const { id } = params;
 
     const produto = await prisma.produto.findFirst({
@@ -48,17 +43,12 @@ export async function GET(
   }
 }
 
-export async function PUT(
+async function putHandler(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params, context }: { params: { id: string }, context: AuthContext }
 ) {
   try {
-    const authResult = await verifyAuth(request);
-    if (!authResult.success) {
-      return NextResponse.json({ error: authResult.error }, { status: 401 });
-    }
-
-    const { empresaId } = authResult;
+    const { empresaId } = context;
     const { id } = params;
     const body = await request.json();
 
@@ -180,17 +170,12 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
+async function deleteHandler(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params, context }: { params: { id: string }, context: AuthContext }
 ) {
   try {
-    const authResult = await verifyAuth(request);
-    if (!authResult.success) {
-      return NextResponse.json({ error: authResult.error }, { status: 401 });
-    }
-
-    const { empresaId } = authResult;
+    const { empresaId } = context;
     const { id } = params;
 
     // Verificar se o produto existe e pertence à empresa
@@ -239,3 +224,18 @@ export async function DELETE(
   }
 }
 
+// Protegendo as rotas com o novo HOC de autenticação
+export const GET = withAuth(
+  (req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) => getHandler(req, { params, context }),
+  { requireCompany: true }
+);
+
+export const PUT = withAuth(
+  (req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) => putHandler(req, { params, context }),
+  { requireCompany: true }
+);
+
+export const DELETE = withAuth(
+  (req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) => deleteHandler(req, { params, context }),
+  { requireCompany: true }
+);

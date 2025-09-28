@@ -26,7 +26,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
       },
       include: {
         cliente: true,
-        vendedor: { select: { nome: true, email: true } },
+        usuario: { select: { nome: true, email: true } },
         empresa: { 
           select: { 
             nome: true, 
@@ -143,9 +143,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
     doc.setFont('helvetica', 'bold');
     doc.text('VENDEDOR RESPONSÁVEL:', pageWidth - 100, yPosition);
     doc.setFont('helvetica', 'normal');
-    doc.text(pedido.vendedor.nome, pageWidth - 100, yPosition + 5);
-    if (pedido.vendedor.email) {
-      doc.text(pedido.vendedor.email, pageWidth - 100, yPosition + 10);
+    doc.text(pedido.usuario.nome, pageWidth - 100, yPosition + 5);
+    if (pedido.usuario.email) {
+      doc.text(pedido.usuario.email, pageWidth - 100, yPosition + 10);
     }
 
     yPosition += 25;

@@ -19,18 +19,18 @@ export async function GET(request: NextRequest) {
     const { empresaId } = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
 
     const { searchParams } = new URL(request.url);
-    const vendedorId = searchParams.get('vendedorId');
+    const usuarioId = searchParams.get('usuarioId');
     const status = searchParams.get('status');
 
     const pedidos = await prisma.pedido.findMany({
       where: {
         empresaId,
-        ...(vendedorId && { vendedorId }),
+        ...(usuarioId && { usuarioId }),
         ...(status && { status: status as StatusPedido }),
       },
       include: {
         cliente: { select: { id: true, nome: true } },
-        vendedor: { select: { id: true, nome: true } },
+        usuario: { select: { id: true, nome: true } },
         itens: {
           include: {
             produto: { select: { id: true, nome: true, sku: true, tipo: true } },

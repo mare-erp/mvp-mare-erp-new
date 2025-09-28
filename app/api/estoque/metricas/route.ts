@@ -1,57 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
-import { verifyAuth } from '@/app/lib/verifyAuth';
+import { withAuth, AuthContext } from '@/app/lib/auth';
 
-export async function GET(request: NextRequest) {
+async function getHandler(request: NextRequest, context: AuthContext) {
   try {
-    const authResult = await verifyAuth(request);
-    if (!authResult.success) {
-      return NextResponse.json({ error: authResult.error }, { status: 401 });
-    }
+    const { empresaId } = context;
 
-    const { empresaId } = authResult;
+    const [totalProdutos, produtosEstoqueBaixo, produtosSemEstoque, valorEstoque] = await Promise.all([
+      prisma.produto.count({
+        where: {
+          empresaId,
+          ativo: true,
+        },
+      }),
+      prisma.produto.count({
+        where: {
+          empresaId,
+          ativo: true,
+          tipo: 'PRODUTO',
+          quantidadeEstoque: {
+            gt: 0,
+            lte: prisma.produto.fields.estoqueMinimo,
+          },
+        },
+      }),
+      prisma.produto.count({
+        where: {
+          empresaId,
+          ativo: true,
+          tipo: 'PRODUTO',
+          quantidadeEstoque: 0,
+        },
+      }),
+      prisma.produto.aggregate({
+        where: {
+          empresaId,
+          ativo: true,
+          tipo: 'PRODUTO',
+        },
+        _sum: {
+          preco: true,
+          custo: true,
+          quantidadeEstoque: true,
+        },
+      }),
+    ]);
 
-    // Buscar todos os produtos da empresa
-    const produtos = await prisma.produto.findMany({
-      where: {
-        empresaId,
-        ativo: true,
-      },
-    });
-
-    // Calcular métricas
-    const totalProdutos = produtos.length;
-    
-    let valorEstoqueCusto = 0;
-    let valorEstoqueVenda = 0;
-    let produtosEstoqueBaixo = 0;
-    let produtosSemEstoque = 0;
-
-    produtos.forEach(produto => {
-      const quantidade = produto.quantidadeEstoque || 0;
-      const custo = Number(produto.custo || 0);
-      const preco = Number(produto.preco);
-
-      // Calcular valores apenas para produtos (não serviços)
-      if (produto.tipo === 'PRODUTO') {
-        valorEstoqueCusto += quantidade * custo;
-        valorEstoqueVenda += quantidade * preco;
-
-        // Verificar status do estoque
-        if (quantidade === 0) {
-          produtosSemEstoque++;
-        } else if (quantidade <= (produto.estoqueMinimo || 0)) {
-          produtosEstoqueBaixo++;
-        }
-      }
-    });
+    const valorEstoqueCusto = Number(valorEstoque._sum.custo || 0) * Number(valorEstoque._sum.quantidadeEstoque || 0);
+    const valorEstoqueVenda = Number(valorEstoque._sum.preco || 0) * Number(valorEstoque._sum.quantidadeEstoque || 0);
 
     const metricas = {
       totalProdutos,
       valorEstoqueCusto,
       valorEstoqueVenda,
       produtosEstoqueBaixo,
-      produtosSemEstoque
+      produtosSemEstoque,
     };
 
     return NextResponse.json(metricas);
@@ -64,3 +67,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export const GET = withAuth(getHandler, {
+  requireCompany: true,
+});

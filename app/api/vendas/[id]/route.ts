@@ -1,29 +1,18 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
-import { cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
 import { StatusPedido } from '@prisma/client';
+import { withAuth, AuthContext } from '@/app/lib/auth';
 
-interface TokenPayload {
-  empresaId: string;
-  userId: string;
-}
-
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+async function getHandler(request: NextRequest, { params, context }: { params: { id: string }, context: AuthContext }) {
   try {
-    const cookieStore = cookies();
-    const token = cookieStore.get('auth-token')?.value;
-    if (!token) return NextResponse.json({ message: 'Não autorizado' }, { status: 401 });
-
-    const { empresaId } = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
     const { id } = params;
 
     const pedido = await prisma.pedido.findUnique({
-      where: { id, empresaId },
+      where: { id, empresaId: context.empresaId },
       include: {
         cliente: { select: { id: true, nome: true } },
-        vendedor: { select: { id: true, nome: true } },
+        usuario: { select: { id: true, nome: true } },
         itens: {
           include: {
             produto: { select: { id: true, nome: true, sku: true, tipo: true } },
@@ -51,17 +40,12 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+async function putHandler(request: NextRequest, { params, context }: { params: { id: string }, context: AuthContext }) {
   try {
-    const cookieStore = cookies();
-    const token = cookieStore.get('auth-token')?.value;
-    if (!token) return NextResponse.json({ message: 'Não autorizado' }, { status: 401 });
-
-    const { empresaId } = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
     const { id } = params;
     const { clienteId, status, observacoes, itens } = await request.json();
 
-    const existingPedido = await prisma.pedido.findUnique({ where: { id, empresaId } });
+    const existingPedido = await prisma.pedido.findUnique({ where: { id, empresaId: context.empresaId } });
     if (!existingPedido) {
       return NextResponse.json({ message: 'Pedido não encontrado.' }, { status: 404 });
     }
@@ -79,7 +63,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
       for (const item of itens) {
         const produto = await prisma.produto.findUnique({
-          where: { id: item.produtoId, empresaId },
+          where: { id: item.produtoId, empresaId: context.empresaId },
         });
 
         if (!produto) {
@@ -111,7 +95,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
               tipo: 'SAIDA',
               quantidade: item.quantidade,
               observacao: `Venda - Pedido ${clienteId}`,
-              empresaId,
+              empresaId: context.empresaId,
             },
           });
         }
@@ -123,7 +107,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const updatedPedido = await prisma.pedido.update({
-      where: { id, empresaId },
+      where: { id, empresaId: context.empresaId },
       data: {
         clienteId: clienteId ?? existingPedido.clienteId,
         status: status ?? existingPedido.status,
@@ -142,16 +126,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+async function deleteHandler(request: NextRequest, { params, context }: { params: { id: string }, context: AuthContext }) {
   try {
-    const cookieStore = cookies();
-    const token = cookieStore.get('auth-token')?.value;
-    if (!token) return NextResponse.json({ message: 'Não autorizado' }, { status: 401 });
-
-    const { empresaId } = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
     const { id } = params;
 
-    const existingPedido = await prisma.pedido.findUnique({ where: { id, empresaId } });
+    const existingPedido = await prisma.pedido.findUnique({ where: { id, empresaId: context.empresaId } });
     if (!existingPedido) {
       return NextResponse.json({ message: 'Pedido não encontrado.' }, { status: 404 });
     }
@@ -176,14 +155,14 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
             tipo: 'ENTRADA',
             quantidade: item.quantidade,
             observacao: `Estorno de venda - Pedido ${id}`,
-            empresaId,
+            empresaId: context.empresaId,
           },
         });
       }
     }
 
     await prisma.itemPedido.deleteMany({ where: { pedidoId: id } });
-    await prisma.pedido.delete({ where: { id, empresaId } });
+    await prisma.pedido.delete({ where: { id, empresaId: context.empresaId } });
 
     return NextResponse.json({ message: 'Pedido excluído com sucesso.' });
   } catch (error) {
@@ -192,3 +171,17 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   }
 }
 
+export const GET = withAuth(
+  (req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) => getHandler(req, { params, context }),
+  { requireCompany: true }
+);
+
+export const PUT = withAuth(
+  (req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) => putHandler(req, { params, context }),
+  { requireCompany: true }
+);
+
+export const DELETE = withAuth(
+  (req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) => deleteHandler(req, { params, context }),
+  { requireCompany: true }
+);

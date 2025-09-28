@@ -8,6 +8,8 @@ import { Button } from '@/app/components/ui/Button';
 import { Dropdown } from '@/app/components/ui/Dropdown';
 
 
+import { useData } from '@/app/contexts/DataContexts';
+
 interface TransacaoModalProps {
   onClose: () => void;
   onSave: () => void;
@@ -30,25 +32,11 @@ export default function TransacaoModal({ onClose, onSave, editingTransacaoId }: 
     clienteId: '',
     observacoes: '',
   });
-  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const { clientes } = useData();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const fetchClientes = async () => {
-      try {
-        const response = await fetch('/api/clientes');
-        if (response.ok) {
-          const data = await response.json();
-          setClientes(data);
-        }
-      } catch (err) {
-        console.error('Erro ao buscar clientes:', err);
-      }
-    };
-
-    fetchClientes();
-
     if (editingTransacaoId) {
       const fetchTransacao = async () => {
         try {
@@ -219,4 +207,3 @@ export default function TransacaoModal({ onClose, onSave, editingTransacaoId }: 
     </div>
   );
 }
-

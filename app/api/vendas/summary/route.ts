@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       },
       include: {
         cliente: { select: { id: true, nome: true } },
-        vendedor: { select: { id: true, nome: true } },
+        usuario: { select: { id: true, nome: true } },
         itens: true,
       },
     });

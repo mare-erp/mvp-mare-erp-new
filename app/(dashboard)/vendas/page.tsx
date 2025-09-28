@@ -17,7 +17,7 @@ interface Pedido {
   cliente: {
     nome: string;
   };
-  vendedor: {
+  usuario: {
     nome: string;
   };
 }
@@ -85,7 +85,7 @@ export default function VendasPage() {
     setIsLoading(true);
     setError(null);
     const params = new URLSearchParams({ dataInicio, dataFim });
-    if (vendedorFiltro) params.append('vendedorId', vendedorFiltro);
+    if (vendedorFiltro) params.append('usuarioId', vendedorFiltro);
     
     const summaryUrl = `/api/vendas/summary?${params.toString()}`;
     const pedidosUrl = `/api/vendas?status=${statusFiltro}&${params.toString()}`;
@@ -298,7 +298,7 @@ export default function VendasPage() {
                 <tr key={pedido.id}>
                   <td className="td-style font-medium text-gray-900">#{pedido.numeroPedido}</td>
                   <td className="td-style">{pedido.cliente.nome}</td>
-                  <td className="td-style">{pedido.vendedor.nome}</td>
+                  <td className="td-style">{pedido.usuario.nome}</td>
                   <td className="td-style">{formatarData(pedido.dataPedido)}</td>
                   <td className="td-style text-right">{formatarValor(pedido.valorTotal)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

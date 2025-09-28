@@ -1,16 +1,10 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
-import { verifyAuth } from '@/app/lib/verifyAuth';
+import { withAuth, AuthContext } from '@/app/lib/auth';
 
-export async function GET(request: NextRequest) {
+async function getHandler(request: NextRequest, context: AuthContext) {
   try {
-    const authResult = await verifyAuth(request);
-    if (!authResult.success) {
-      return NextResponse.json({ error: authResult.error }, { status: 401 });
-    }
-
-    const { empresaId } = authResult;
+    const { empresaId } = context;
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -68,14 +62,9 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function postHandler(request: NextRequest, context: AuthContext) {
   try {
-    const authResult = await verifyAuth(request);
-    if (!authResult.success) {
-      return NextResponse.json({ error: authResult.error }, { status: 401 });
-    }
-
-    const { empresaId } = authResult;
+    const { empresaId } = context;
     const body = await request.json();
 
     const {
@@ -143,3 +132,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Protegendo as rotas com o novo HOC de autenticação
+export const GET = withAuth(getHandler, {
+  // Exige que o usuário esteja associado a uma empresa para acessar esta rota
+  requireCompany: true,
+});
+
+export const POST = withAuth(postHandler, {
+  requireCompany: true,
+});

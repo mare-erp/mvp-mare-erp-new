@@ -96,7 +96,7 @@ export async function verifyOrganizationAccess(
     where: {
       organizacaoId_usuarioId: {
         organizacaoId,
-        usuarioId
+        usuarioId: userId
       }
     }
   });

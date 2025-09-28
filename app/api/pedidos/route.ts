@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
-import { withAuth, AuthContext } from '@/app/lib/auth';
 import { z } from 'zod';
 import { StatusPedido, TipoItem } from '@prisma/client';
+import { withAuth, AuthContext } from '@/app/lib/auth';
 
 const itemPedidoSchema = z.object({
   produtoId: z.string().cuid().optional(),
@@ -13,7 +13,6 @@ const itemPedidoSchema = z.object({
 });
 
 const createPedidoSchema = z.object({
-  empresaId: z.string().cuid(),
   numeroPedido: z.number().int().positive(),
   clienteId: z.string().cuid("ID de cliente inválido."),
   status: z.nativeEnum(StatusPedido),
@@ -25,71 +24,66 @@ const createPedidoSchema = z.object({
   itens: z.array(itemPedidoSchema).min(1, "O pedido deve ter pelo menos um item."),
 });
 
-async function getHandler(req: NextRequest, context: AuthContext) {
-  const { searchParams } = new URL(req.url);
-  const empresaId = searchParams.get('empresaId');
-  const statusParam = searchParams.get('status');
-  const status = statusParam ? StatusPedido[statusParam as keyof typeof StatusPedido] : null;
-  const dataInicio = searchParams.get('dataInicio');
-  const dataFim = searchParams.get('dataFim');
+async function getHandler(request: NextRequest, context: AuthContext) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const statusParam = searchParams.get('status');
+    const status = statusParam ? StatusPedido[statusParam as keyof typeof StatusPedido] : null;
+    const usuarioId = searchParams.get('usuarioId');
+    const dataInicio = searchParams.get('dataInicio');
+    const dataFim = searchParams.get('dataFim');
 
-  let whereClause: any = {};
-
-  if (empresaId) {
-    const hasAccess = await prisma.empresa.findFirst({ where: { id: empresaId, organizacaoId: context.organizacaoId }});
-    if (!hasAccess) {
-        return NextResponse.json({ message: 'Acesso negado a esta empresa.' }, { status: 403 });
-    }
-    whereClause.empresaId = empresaId;
-  } else {
-    const org = await prisma.organizacao.findUnique({
-        where: { id: context.organizacaoId },
-        include: { empresas: { select: { id: true } } }
-    });
-    if (!org) return NextResponse.json([]);
-    const empresaIds = org.empresas.map(e => e.id);
-    whereClause.empresaId = { in: empresaIds };
-  }
-
-  if (status) whereClause.status = status;
-  if (dataInicio && dataFim) {
-    whereClause.dataPedido = { 
-      gte: new Date(dataInicio), 
-      lte: new Date(dataFim) 
+    const whereClause: any = {
+      empresaId: context.empresaId,
+      ...(status && { status: status }),
+      ...(usuarioId && { usuarioId: usuarioId }),
+      ...(dataInicio && dataFim && { 
+        dataPedido: { 
+          gte: new Date(dataInicio), 
+          lte: new Date(dataFim) 
+        } 
+      }),
     };
+
+    const pedidos = await prisma.pedido.findMany({
+      where: whereClause,
+      include: {
+        cliente: { select: { nome: true } },
+        usuario: { select: { nome: true } },
+      },
+      orderBy: { dataPedido: 'desc' },
+    });
+
+    return NextResponse.json(pedidos.map(p => ({...p, valorTotal: Number(p.valorTotal)})));
+  } catch (error) {
+    return NextResponse.json({ message: 'Erro ao buscar pedidos.' }, { status: 500 });
   }
-
-  const pedidos = await prisma.pedido.findMany({
-    where: whereClause,
-    include: {
-      cliente: { select: { nome: true } },
-      usuario: { select: { nome: true } },
-    },
-    orderBy: { dataPedido: 'desc' },
-  });
-
-  return NextResponse.json(pedidos.map(p => ({...p, valorTotal: Number(p.valorTotal)})));
 }
 
-async function postHandler(req: NextRequest, context: AuthContext) {
-  const body = await req.json();
-  const validation = createPedidoSchema.safeParse(body);
-  if (!validation.success) {
-    return NextResponse.json({ message: "Dados inválidos.", details: validation.error.flatten().fieldErrors }, { status: 400 });
-  }
-  
-  const { empresaId, numeroPedido, clienteId, status, validadeOrcamento, dataEntrega, frete, informacoesNegociacao, observacoesNF, itens } = validation.data;
-  const usuarioId = context.userId;
-
-  const hasAccess = await prisma.empresa.findFirst({ where: { id: empresaId, organizacaoId: context.organizacaoId }});
-  if (!hasAccess) {
-    return NextResponse.json({ message: 'Acesso negado para criar pedido nesta empresa.' }, { status: 403 });
-  }
-
+async function postHandler(request: NextRequest, context: AuthContext) {
   try {
+    const body = await request.json();
+    const validation = createPedidoSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json({ message: "Dados inválidos.", details: validation.error.flatten().fieldErrors }, { status: 400 });
+    }
+    
+    const { 
+      numeroPedido, 
+      clienteId, 
+      status, 
+      validadeOrcamento, 
+      dataEntrega, 
+      frete, 
+      informacoesNegociacao, 
+      observacoesNF, 
+      itens 
+    } = validation.data;
+
     const novoPedido = await prisma.$transaction(async (tx) => {
+      // Verificar se o número do pedido já existe
       const pedidoExistente = await tx.pedido.findUnique({
-        where: { empresaId_numeroPedido: { empresaId, numeroPedido } },
+        where: { empresaId_numeroPedido: { empresaId: context.empresaId, numeroPedido } },
       });
 
       if (pedidoExistente) {
@@ -100,9 +94,9 @@ async function postHandler(req: NextRequest, context: AuthContext) {
 
       const pedido = await tx.pedido.create({
         data: {
-          empresaId,
+          empresaId: context.empresaId,
           clienteId,
-          usuarioId,
+          usuarioId: context.userId,
           status,
           numeroPedido,
           valorTotal,
@@ -114,10 +108,12 @@ async function postHandler(req: NextRequest, context: AuthContext) {
         },
       });
 
+      // Criar histórico inicial
       await tx.historicoPedido.create({
         data: {
           pedidoId: pedido.id,
           descricao: `Pedido criado com status: ${status}`,
+          usuarioId: context.userId,
         },
       });
 
@@ -129,28 +125,34 @@ async function postHandler(req: NextRequest, context: AuthContext) {
             descricao: item.descricao,
             quantidade: item.quantidade,
             precoUnitario: item.precoUnitario,
-            subtotal: item.quantidade * item.precoUnitario,
           },
         });
 
+        // Baixa no estoque apenas para produtos vendidos
         if (item.tipo === 'PRODUTO' && item.produtoId && status === 'VENDIDO') {
           await tx.produto.update({
             where: { id: item.produtoId },
-            data: { quantidadeEstoque: { decrement: item.quantidade } },
+            data: {
+              quantidadeEstoque: {
+                decrement: item.quantidade,
+              },
+            },
           });
 
+          // Registrar movimentação de estoque
           await tx.movimentacaoEstoque.create({
             data: {
               produtoId: item.produtoId,
               tipo: 'SAIDA',
               quantidade: item.quantidade,
               observacao: `Venda - Pedido #${numeroPedido}`,
-              empresaId,
+              empresaId: context.empresaId,
             },
           });
         }
       }
 
+      // Marcar cliente como recorrente se for primeira venda
       if (status === 'VENDIDO') {
         await tx.cliente.updateMany({
           where: { id: clienteId, primeiraCompraConcluida: false },
@@ -164,9 +166,16 @@ async function postHandler(req: NextRequest, context: AuthContext) {
     return NextResponse.json(novoPedido, { status: 201 });
   } catch (error) {
     console.error("Erro ao criar pedido:", error);
-    return NextResponse.json({ message: error instanceof Error ? error.message : 'Erro ao criar o pedido.' }, { status: 500 });
+    return NextResponse.json({ 
+      message: error instanceof Error ? error.message : 'Erro ao criar o pedido.' 
+    }, { status: 500 });
   }
 }
 
-export const GET = withAuth(getHandler);
-export const POST = withAuth(postHandler);
+export const GET = withAuth(getHandler, {
+  requireCompany: true,
+});
+
+export const POST = withAuth(postHandler, {
+  requireCompany: true,
+});

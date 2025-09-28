@@ -11,7 +11,7 @@ interface TokenPayload { empresaId: string; }
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const vendedorId = searchParams.get('vendedorId');
+    const usuarioId = searchParams.get('usuarioId');
     const dataInicio = searchParams.get('dataInicio');
     const dataFim = searchParams.get('dataFim');
 
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     // Constrói o filtro dinamicamente
     const whereClause: any = {
       empresaId: empresaId,
-      ...(vendedorId && { vendedorId: vendedorId }),
+      ...(usuarioId && { usuarioId: usuarioId }),
       ...(dataInicio && dataFim && { 
         dataPedido: { 
           gte: new Date(dataInicio), 

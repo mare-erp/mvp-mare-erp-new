@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, Calendar, CreditCard, AlertCircle, Plus, Edit, Trash2 } from 'lucide-react';
 import TransacaoModal from './components/TransacaoModal'; // Importar o TransacaoModal
 import { TipoTransacao, StatusTransacao } from '@prisma/client';
@@ -38,6 +37,58 @@ interface Transacao {
   observacoes?: string | null;
 }
 
+const statusOptions: StatusTransacao[] = ['PENDENTE', 'PAGA', 'ATRASADA', 'CANCELADA'];
+const tipoOptions: TipoTransacao[] = ['RECEITA', 'DESPESA'];
+
+const statusColors: Record<StatusTransacao, string> = { PENDENTE: 'bg-yellow-100 text-yellow-800', PAGA: 'bg-green-100 text-green-800', ATRASADA: 'bg-red-100 text-red-800', CANCELADA: 'bg-gray-100 text-gray-800' };
+const tipoColors: Record<TipoTransacao, string> = { RECEITA: 'text-green-600', DESPESA: 'text-red-600' };
+
+// Componente para o Skeleton da página
+const FinanceiroSkeleton = () => {
+  const SkeletonCard = () => (
+    <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm animate-pulse">
+      <div className="h-4 bg-gray-200 rounded w-1/3 mb-4"></div>
+      <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
+      <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+    </div>
+  );
+
+  const SkeletonRow = () => (
+    <tr className="animate-pulse">
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="h-4 bg-gray-200 rounded w-20"></div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="h-6 bg-gray-200 rounded-full w-24"></div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="h-4 bg-gray-200 rounded w-24"></div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-right">
+        <div className="flex justify-end space-x-2">
+          <div className="h-8 w-8 bg-gray-200 rounded"></div>
+          <div className="h-8 w-8 bg-gray-200 rounded"></div>
+        </div>
+      </td>
+    </tr>
+  );
+
+  return (
+    <div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
+      {/* Adicione aqui o esqueleto da tabela se desejar */}
+    </div>
+  );
+};
+
 export default function FinanceiroPage() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
@@ -45,24 +96,30 @@ export default function FinanceiroPage() {
   const [error, setError] = useState<string | null>(null);
   const [showTransacaoModal, setShowTransacaoModal] = useState(false);
   const [editingTransacaoId, setEditingTransacaoId] = useState<string | null>(null);
+  const [filtroTipo, setFiltroTipo] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('');
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
+
+      const dashboardUrl = '/api/financeiro/dashboard-data';
+      
+      const transacoesParams = new URLSearchParams();
+      if (filtroTipo) transacoesParams.append('tipo', filtroTipo);
+      if (filtroStatus) transacoesParams.append('status', filtroStatus);
+      const transacoesUrl = `/api/financeiro/transacoes?${transacoesParams.toString()}`;
+
       const [dashboardRes, transacoesRes] = await Promise.all([
-        fetch('/api/financeiro/dashboard-data'),
-        fetch('/api/financeiro/transacoes')
+        fetch(dashboardUrl),
+        fetch(transacoesUrl)
       ]);
 
       if (dashboardRes.ok && transacoesRes.ok) {
         const dashboardData = await dashboardRes.json();
         const transacoesData = await transacoesRes.json();
         setDashboardData(dashboardData);
-        setTransacoes(transacoesData);
+        setTransacoes(transacoesData.transacoes); // Corrigido para pegar o array de transações
       } else {
         setError('Erro ao carregar dados financeiros');
       }
@@ -71,7 +128,11 @@ export default function FinanceiroPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filtroTipo, filtroStatus]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const formatCurrency = (value: number) => {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -95,31 +156,27 @@ export default function FinanceiroPage() {
     setShowTransacaoModal(true);
   };
 
-  const handleDeleteTransacao = async (transacaoId: string) => {
+  const handleDeleteTransacao = (transacaoId: string) => {
     if (!confirm('Tem certeza que deseja excluir esta transação?')) return;
 
-    try {
-      const response = await fetch(`/api/financeiro/transacoes/${transacaoId}`, {
-        method: 'DELETE',
-      });
-
+    fetch(`/api/financeiro/transacoes/${transacaoId}`, {
+      method: 'DELETE',
+    })
+    .then(response => {
       if (response.ok) {
         fetchData(); // Recarregar dados
       } else {
         alert('Erro ao excluir transação.');
       }
-    } catch (err) {
+    })
+    .catch(err => {
       console.error('Erro ao excluir transação:', err);
       alert('Erro ao excluir transação.');
-    }
+    });
   };
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-gray-500">Carregando dados financeiros...</div>
-      </div>
-    );
+    return <FinanceiroSkeleton />;
   }
 
   if (error) {
@@ -140,193 +197,71 @@ export default function FinanceiroPage() {
         />
       )}
 
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Financeiro</h1>
-          <p className="mt-2 text-gray-600">Controle de fluxo de caixa e gestão financeira.</p>
+      {/* Header e Cards de Resumo */}
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Visão Financeira</h1>
+            <p className="text-gray-500">Resumo das suas atividades financeiras.</p>
+          </div>
+          <button
+            onClick={handleAddTransacao}
+            className="bg-[#0A2F5B] text-white px-4 py-2 rounded-lg hover:bg-[#00BFA5] transition-colors flex items-center shadow-sm"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Nova Transação
+          </button>
         </div>
-        <button 
-          onClick={handleAddTransacao}
-          className="btn-primary inline-flex items-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Nova Transação</span>
-        </button>
+        {dashboardData && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StatCard icon={TrendingUp} title="Entradas do Mês" value={formatCurrency(dashboardData.entradas.mes)} subtext={`${formatCurrency(dashboardData.entradas.pendentes)} pendente`} />
+            <StatCard icon={TrendingDown} title="Saídas do Mês" value={formatCurrency(dashboardData.saidas.mes)} subtext={`${formatCurrency(dashboardData.saidas.pendentes)} pendente`} />
+            <StatCard icon={DollarSign} title="Saldo do Mês" value={formatCurrency(dashboardData.saldo)} subtext="Entradas - Saídas" />
+            <StatCard icon={AlertCircle} title="Contas Vencendo" value={dashboardData.contasVencendo.toString()} subtext="Nos próximos 7 dias" />
+          </div>
+        )}
       </div>
 
-      {dashboardData && (
-        <>
-          {/* Cards de Resumo */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white p-6 rounded-lg border">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-green-100">
-                  <TrendingUp className="w-6 h-6 text-green-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">Entradas do Mês</p>
-                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(dashboardData.entradas.mes)}</p>
-                  <p className="text-xs text-gray-500">Pendentes: {formatCurrency(dashboardData.entradas.pendentes)}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg border">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-red-100">
-                  <TrendingDown className="w-6 h-6 text-red-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">Saídas do Mês</p>
-                  <p className="text-2xl font-bold text-gray-900">{formatCurrency(dashboardData.saidas.mes)}</p>
-                  <p className="text-xs text-gray-500">Pendentes: {formatCurrency(dashboardData.saidas.pendentes)}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg border">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-blue-100">
-                  <DollarSign className="w-6 h-6 text-blue-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">Saldo Atual</p>
-                  <p className={`text-2xl font-bold ${dashboardData.saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatCurrency(dashboardData.saldo)}
-                  </p>
-                  <p className="text-xs text-gray-500">Resultado do período</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg border">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-yellow-100">
-                  <AlertCircle className="w-6 h-6 text-yellow-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">Contas Vencendo</p>
-                  <p className="text-2xl font-bold text-gray-900">{dashboardData.contasVencendo}</p>
-                  <p className="text-xs text-gray-500">Próximos 7 dias</p>
-                </div>
-              </div>
-            </div>
+      {/* Filtros e Tabela de Transações */}
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row items-center gap-4">
+          <h3 className="text-lg font-semibold text-gray-700 flex-shrink-0">Últimas Transações</h3>
+          <div className="flex-grow w-full sm:w-auto grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <select
+              value={filtroTipo}
+              onChange={(e) => setFiltroTipo(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0A2F5B] focus:border-transparent text-sm"
+            >
+              <option value="">Todos os Tipos</option>
+              {tipoOptions.map(tipo => <option key={tipo} value={tipo}>{tipo === 'RECEITA' ? 'Receita' : 'Despesa'}</option>)}
+            </select>
+            <select
+              value={filtroStatus}
+              onChange={(e) => setFiltroStatus(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0A2F5B] focus:border-transparent text-sm"
+            >
+              <option value="">Todos os Status</option>
+              {statusOptions.map(status => <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}</option>)}
+            </select>
           </div>
-
-          {/* Gráfico de Fluxo de Caixa */}
-          <div className="bg-white p-6 rounded-lg border mb-8">
-            <h2 className="text-lg font-semibold mb-4">Fluxo de Caixa Mensal</h2>
-            <div className="h-64 flex items-end justify-between space-x-2">
-              {dashboardData.fluxoMensal.map((item, index) => {
-                const maxValue = Math.max(...dashboardData.fluxoMensal.map(i => Math.max(i.entradas, i.saidas)));
-                const entradaHeight = (item.entradas / maxValue) * 200;
-                const saidaHeight = (item.saidas / maxValue) * 200;
-                
-                return (
-                  <div key={index} className="flex flex-col items-center space-y-2">
-                    <div className="flex items-end space-x-1">
-                      <div 
-                        className="bg-green-500 w-6 rounded-t"
-                        style={{ height: `${entradaHeight}px` }}
-                        title={`Entradas: ${formatCurrency(item.entradas)}`}
-                      />
-                      <div 
-                        className="bg-red-500 w-6 rounded-t"
-                        style={{ height: `${saidaHeight}px` }}
-                        title={`Saídas: ${formatCurrency(item.saidas)}`}
-                      />
-                    </div>
-                    <span className="text-xs text-gray-500">{item.mes}</span>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex justify-center mt-4 space-x-6">
-              <div className="flex items-center">
-                <div className="w-4 h-4 bg-green-500 rounded mr-2"></div>
-                <span className="text-sm text-gray-600">Entradas</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-4 h-4 bg-red-500 rounded mr-2"></div>
-                <span className="text-sm text-gray-600">Saídas</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Tabela de Transações */}
-          <div className="bg-white rounded-lg border">
-            <div className="p-6 border-b">
-              <h2 className="text-lg font-semibold">Últimas Transações</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="th-style">Descrição</th>
-                    <th className="th-style">Tipo</th>
-                    <th className="th-style">Status</th>
-                    <th className="th-style text-right">Valor</th>
-                    <th className="th-style">Vencimento</th>
-                    <th className="th-style">Pagamento</th>
-                    <th className="relative px-6 py-3"><span className="sr-only">Ações</span></th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {transacoes.length > 0 ? transacoes.map((transacao) => (
-                    <tr key={transacao.id}>
-                      <td className="td-style font-medium text-gray-900">{transacao.descricao}</td>
-                      <td className="td-style">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          transacao.tipo === 'RECEITA' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                        }`}>
-                          {transacao.tipo === 'RECEITA' ? 'Receita' : 'Despesa'}
-                        </span>
-                      </td>
-                      <td className="td-style">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          transacao.status === 'PAGA' ? 'bg-green-100 text-green-800' :
-                          transacao.status === 'PENDENTE' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {transacao.status}
-                        </span>
-                      </td>
-                      <td className="td-style text-right">{formatCurrency(transacao.valor)}</td>
-                      <td className="td-style">{formatDate(transacao.dataVencimento)}</td>
-                      <td className="td-style">{transacao.dataPagamento ? formatDate(transacao.dataPagamento) : 'N/A'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center space-x-2 justify-end">
-                          <button
-                            onClick={() => handleEditTransacao(transacao.id)}
-                            className="text-blue-600 hover:text-blue-800"
-                            title="Editar Transação"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteTransacao(transacao.id)}
-                            className="text-red-600 hover:text-red-800"
-                            title="Excluir Transação"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
-                        Nenhuma transação encontrada.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left text-gray-500">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3">Descrição</th>
+                <th scope="col" className="px-6 py-3">Valor</th>
+                <th scope="col" className="px-6 py-3">Status</th>
+                <th scope="col" className="px-6 py-3">Vencimento</th>
+                <th scope="col" className="px-6 py-3 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Renderização das transações aqui */}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }
-
