@@ -184,14 +184,13 @@ export async function logAuditoria(
     await prisma.logAuditoria.create({
       data: {
         acao: acao as any,
-        entidade,
-        entidadeId,
-        detalhes,
+        tabela: entidade,
+        registroId: entidadeId,
+        dadosAntigos: detalhes ? JSON.stringify(detalhes) : null,
         ip: req?.ip || req?.headers.get('x-forwarded-for') || null,
         userAgent: req?.headers.get('user-agent') || null,
         usuarioId: userId,
-        organizacaoId,
-        empresaId
+        empresaId: empresaId || 'unknown'
       }
     });
   } catch (error) {

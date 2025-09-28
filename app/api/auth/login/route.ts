@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/app/lib/prisma';
-import { generateToken, logAuditoria, checkRateLimit } from '@/app/lib/verifyAuth';
+import { generateToken, logAuditoria, checkRateLimit } from '@/app/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,8 +21,7 @@ export async function POST(request: NextRequest) {
     const usuario = await prisma.usuario.findUnique({
       where: { email: email.toLowerCase() },
       include: {
-        membrosOrganizacao: {
-          where: { ativo: true },
+        organizacoes: {
           include: {
             organizacao: {
               include: {
@@ -52,8 +51,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Filtrar organizações ativas
+    const organizacoesAtivas = usuario.organizacoes.filter(org => org.ativo);
+    
     // Verificar se usuário tem organizações ativas
-    if (usuario.membrosOrganizacao.length === 0) {
+    if (organizacoesAtivas.length === 0) {
       return NextResponse.json(
         { error: 'Usuário não pertence a nenhuma organização ativa' },
         { status: 403 }
@@ -61,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Pegar primeira organização (ou deixar usuário escolher se tiver múltiplas)
-    const primeiraOrganizacao = usuario.membrosOrganizacao[0];
+    const primeiraOrganizacao = organizacoesAtivas[0];
     const organizacao = primeiraOrganizacao.organizacao;
 
     // Gerar token
@@ -85,7 +87,7 @@ export async function POST(request: NextRequest) {
     await logAuditoria(
       usuario.id,
       organizacao.id,
-      null,
+      organizacao.empresas[0]?.id || null,
       'LOGIN',
       'Usuario',
       usuario.id,
@@ -111,7 +113,7 @@ export async function POST(request: NextRequest) {
       },
       role: primeiraOrganizacao.role,
       permissoes: primeiraOrganizacao.permissoes,
-      organizacoes: usuario.membrosOrganizacao.map(membro => ({
+      organizacoes: organizacoesAtivas.map(membro => ({
         id: membro.organizacao.id,
         nome: membro.organizacao.nome,
         role: membro.role

@@ -40,7 +40,6 @@ export async function POST(request: NextRequest) {
       const novaOrganizacao = await prisma.organizacao.create({
         data: {
           nome: companyName,
-          adminId: novoUsuario.id,
         },
       });
       console.log("--> Organização criada com ID:", novaOrganizacao.id);

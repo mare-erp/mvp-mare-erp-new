@@ -111,6 +111,8 @@ model MembroOrganizacao {
   usuarioId     String
   usuario       Usuario         @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   role          RoleOrganizacao @default(VISUALIZADOR)
+  permissoes   String[]        @default([])
+  ativo         Boolean         @default(true)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
@@ -135,7 +137,6 @@ model Empresa {
   updatedAt         DateTime  @updatedAt
   organizacaoId     String
   organizacao       Organizacao @relation(fields: [organizacaoId], references: [id], onDelete: Cascade)
-  usuarios          Usuario[]
   clientes          Cliente[]
   produtos          Produto[]
   pedidos           Pedido[]
@@ -153,16 +154,13 @@ model Usuario {
   id                String    @id @default(cuid())
   nome              String
   email             String    @unique
-  senha             String
+  senhaHash         String
   role              Role      @default(VISUALIZADOR)
   ativo             Boolean   @default(true)
+  ultimoLogin       DateTime?
+  fotoPerfil        String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
-  empresaId         String
-  empresa           Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
-  pedidos           Pedido[]
-  historicoPedidos  HistoricoPedido[]
-  comissoes         Comissao[]
   organizacoes      MembroOrganizacao[]
   auditoria         LogAuditoria[]
 }
@@ -262,8 +260,6 @@ model Pedido {
   clienteId            String
   cliente              Cliente               @relation(fields: [clienteId], references: [id], onDelete: Restrict)
 
-  vendedorId           String
-  vendedor             Usuario               @relation(fields: [vendedorId], references: [id], onDelete: Restrict)
   
   itens                ItemPedido[]
   transacoes           TransacaoFinanceira[]
@@ -292,8 +288,6 @@ model HistoricoPedido {
   pedido    Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
   data      DateTime @default(now())
   descricao String
-  usuarioId String
-  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
 }
 
 model Parcela {
@@ -415,8 +409,6 @@ model ConfiguracaoSistema {
 
 model Comissao {
   id          String    @id @default(cuid())
-  vendedorId  String
-  vendedor    Usuario   @relation(fields: [vendedorId], references: [id], onDelete: Restrict)
   pedidoId    String
   pedido      Pedido    @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
   valor       Decimal
