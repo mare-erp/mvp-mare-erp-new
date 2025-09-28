@@ -1,0 +1,34 @@
+prisma:query SELECT "public"."Pedido"."id", "public"."Pedido"."numeroPedido", "public"."Pedido"."status"::text, "public"."Pedido"."valorTotal", "public"."Pedido"."dataPedido", "public"."Pedido"."validadeOrcamento", "public"."Pedido"."dataEntrega", "public"."Pedido"."frete", "public"."Pedido"."desconto", "public"."Pedido"."informacoesNegociacao", "public"."Pedido"."observacoesNF", "public"."Pedido"."recorrencia"::text, "public"."Pedido"."dataFimRecorrencia", "public"."Pedido"."formaPagamento", "public"."Pedido"."banco", "public"."Pedido"."parcelas", "public"."Pedido"."dataVencimento", "public"."Pedido"."createdAt", "public"."Pedido"."updatedAt", "public"."Pedido"."empresaId", "public"."Pedido"."clienteId", "public"."Pedido"."vendedorId" FROM "public"."Pedido" WHERE ("public"."Pedido"."id" = $1 AND "public"."Pedido"."empresaId" = $2) LIMIT $3 OFFSET $4
+Erro ao buscar pedido: PrismaClientKnownRequestError:
+Invalid `prisma.pedido.findUnique()` invocation:
+
+
+The column `Pedido.validadeOrcamento` does not exist in the current database.
+    at ei.handleRequestError (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\@prisma\client\runtime\library.js:121:7268)
+    at ei.handleAndLogRequestError (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\@prisma\client\runtime\library.js:121:6593)
+    at ei.request (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\@prisma\client\runtime\library.js:121:6300)
+    at async a (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\@prisma\client\runtime\library.js:130:9551)
+    at async GET (webpack-internal:///(rsc)/./app/api/vendas/[id]/route.ts:27:24)
+    at async C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:57228
+    at async eT.execute (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:46851)
+    at async eT.handle (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:6:58760)
+    at async doRender (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\next\dist\server\base-server.js:1366:42)
+    at async cacheEntry.responseCache.get.routeKind (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\next\dist\server\base-server.js:1576:40)
+    at async DevServer.renderToResponseWithComponentsImpl (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\next\dist\server\base-server.js:1496:28)
+    at async DevServer.renderPageComponent (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\next\dist\server\base-server.js:1924:24)
+    at async DevServer.renderToResponseImpl (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\next\dist\server\base-server.js:1962:32)
+    at async DevServer.pipeImpl (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\next\dist\server\base-server.js:922:25)
+    at async NextNodeServer.handleCatchallRenderRequest (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\next\dist\server\next-server.js:272:17)
+    at async DevServer.handleRequestImpl (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\next\dist\server\base-server.js:818:17)
+    at async C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\next\dist\server\dev\next-dev-server.js:339:20
+    at async Span.traceAsyncFn (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\next\dist\trace\trace.js:154:20)
+    at async DevServer.handleRequest (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\next\dist\server\dev\next-dev-server.js:336:24)
+    at async invokeRender (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\next\dist\server\lib\router-server.js:179:21)
+    at async handleRequest (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\next\dist\server\lib\router-server.js:359:24)
+    at async requestHandlerImpl (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\next\dist\server\lib\router-server.js:383:13)
+    at async Server.requestListener (C:\Users\joaoe\OneDrive\Área de Trabalho\João\Maré ERP\SISTEMA\MVP\V3\mare-erp\node_modules\next\dist\server\lib\start-server.js:141:13) {
+  code: 'P2022',
+  meta: { modelName: 'Pedido', column: 'Pedido.validadeOrcamento' },
+  clientVersion: '6.16.2'
+}
+ GET /api/vendas/summary?dataInicio=2025-09-01&dataFim=2025-09-30 500 in 57ms

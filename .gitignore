@@ -1,0 +1,5 @@
+# Ignora a pasta de dependências do Node.js
+node_modules
+
+# Ignora a pasta de build do Next.js
+.next
