@@ -18,15 +18,16 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F0F2F5] via-white to-[#F0F2F5]">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="bg-white shadow-sm border-b border-[#F0F2F5]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
-              <div className="relative h-10 w-40">
+              <div className="relative h-12 w-48 max-h-12 max-w-48">
                 <Image
-                  src="/logo.svg"
+                  src="/logo.png"
                   alt="Maré ERP"
-                  fill={true}
+                  width={192}
+                  height={48}
                   style={{objectFit:"contain"}}
                 />
               </div>
@@ -156,19 +157,20 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="bg-[#1A202C] text-white py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="relative h-8 w-32 mx-auto mb-6">
+          <div className="relative h-10 w-40 max-h-10 max-w-40 mx-auto mb-6">
             <Image
-              src="/logo.svg"
+              src="/logo.png"
               alt="Maré ERP"
-              fill={true}
+              width={160}
+              height={40}
               style={{objectFit:"contain"}}
               className="brightness-0 invert"
             />
           </div>
-          <p className="text-gray-400 mb-4">
+          <p className="text-[#718096] mb-4">
             Empodere sua empresa com gestão descomplicada e integrada
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-[#718096]">
             © 2024 Maré ERP. Todos os direitos reservados.
           </p>
         </div>

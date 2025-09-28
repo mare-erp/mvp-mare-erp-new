@@ -3,7 +3,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const publicRoutes = ['/login', '/sign-up'];
+const publicRoutes = ['/', '/login', '/sign-up'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -25,6 +25,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|logo.png|logo.svg|logo-white.png|logo-white.svg|.*\\.png|.*\\.svg|.*\\.jpg|.*\\.jpeg|.*\\.gif|.*\\.ico).*)',
   ],
 };

@@ -48,13 +48,14 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#F0F2F5] via-white to-[#F0F2F5] p-4">
-            <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-200 w-full max-w-md">
-                <div className="flex justify-center mb-6">
-                    <div className="relative h-12 w-48">
+            <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100 w-full max-w-md">
+                <div className="flex justify-center mb-8">
+                    <div className="relative h-12 w-48 max-h-12 max-w-48">
                         <Image
-                            src="/logo.svg"
+                            src="/logo.png"
                             alt="Maré ERP"
-                            fill={true}
+                            width={192}
+                            height={48}
                             style={{objectFit:"contain"}}
                         />
                     </div>
@@ -71,7 +72,7 @@ export default function LoginPage() {
                         <Input id="senha" name="senha" type="password" placeholder="Sua senha" required value={formData.senha} onChange={handleChange} />
                     </div>
 
-                    {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+                    {error && <p className="text-sm text-[#E53E3E] text-center">{error}</p>}
 
                     <div>
                         <Button type="submit" isLoading={isLoading} className="w-full bg-[#0A2F5B] text-white py-3 rounded-lg text-lg font-semibold hover:bg-[#00BFA5] transition-colors">
