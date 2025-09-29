@@ -43,6 +43,26 @@ const tipoOptions: TipoTransacao[] = ['RECEITA', 'DESPESA'];
 const statusColors: Record<StatusTransacao, string> = { PENDENTE: 'bg-yellow-100 text-yellow-800', PAGA: 'bg-green-100 text-green-800', ATRASADA: 'bg-red-100 text-red-800', CANCELADA: 'bg-gray-100 text-gray-800' };
 const tipoColors: Record<TipoTransacao, string> = { RECEITA: 'text-green-600', DESPESA: 'text-red-600' };
 
+interface StatCardProps {
+  icon: React.ElementType;
+  title: string;
+  value: string;
+  subtext: string;
+}
+
+const StatCard = ({ icon: Icon, title, value, subtext }: StatCardProps) => (
+  <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm flex items-center space-x-4">
+    <div className="flex-shrink-0">
+      <Icon className="w-8 h-8 text-[#0A2F5B]" />
+    </div>
+    <div>
+      <p className="text-sm font-medium text-gray-500">{title}</p>
+      <p className="text-2xl font-semibold text-gray-900">{value}</p>
+      <p className="text-xs text-gray-400">{subtext}</p>
+    </div>
+  </div>
+);
+
 // Componente para o Skeleton da página
 const FinanceiroSkeleton = () => {
   const SkeletonCard = () => (
@@ -257,7 +277,46 @@ export default function FinanceiroPage() {
               </tr>
             </thead>
             <tbody>
-              {/* Renderização das transações aqui */}
+              {transacoes.length > 0 ? (
+                transacoes.map((transacao) => (
+                  <tr key={transacao.id} className="bg-white border-b hover:bg-gray-50">
+                    <td className="px-6 py-4 font-medium text-gray-900">
+                      {transacao.descricao}
+                    </td>
+                    <td className={`px-6 py-4 ${tipoColors[transacao.tipo]}`}>
+                      {formatCurrency(transacao.valor)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[transacao.status]}`}>
+                        {transacao.status.charAt(0).toUpperCase() + transacao.status.slice(1).toLowerCase()}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {formatDate(transacao.dataVencimento)}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={() => handleEditTransacao(transacao.id)}
+                        className="text-[#0A2F5B] hover:text-[#00BFA5] mr-3"
+                      >
+                        <Edit className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTransacao(transacao.id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                    Nenhuma transação encontrada.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

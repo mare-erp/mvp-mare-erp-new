@@ -23,9 +23,14 @@
     *   **Problema:** Tentativas de implementar o seletor de empresa e refatorar o contexto de autenticação resultaram em erros de compilação ("Expected '>', got 'value'") e tela preta.
     *   **Solução:** Todas as alterações relacionadas à refatoração do `AuthProvider` e `useAuth` em `app/layout.tsx`, `app/(dashboard)/layout.tsx`, `app/hooks/useAuth.ts` e a criação de `app/contexts/AuthContext.tsx` foram revertidas para o estado original do projeto. O problema do seletor de empresa ainda não foi abordado de forma definitiva, mas o aplicativo está funcional novamente.
 
+4.  **Funcionalidade Financeiro:**
+    *   **Problema:** A página de Financeiro não exibia as transações nem os cards de resumo, embora as APIs retornassem 200 OK.
+    *   **Solução:**
+        1.  **Implementado Componente `StatCard`:** O componente `StatCard` foi definido em `app/(dashboard)/financeiro/page.tsx` para exibir os cards de resumo.
+        2.  **Implementada Renderização de Transações:** Adicionado um loop dentro da seção `<tbody>` em `app/(dashboard)/financeiro/page.tsx` para iterar sobre o array `transacoes` e renderizar cada transação como uma linha da tabela.
+
 ### Próximos Passos (A Fazer):
 
 *   **Funcionalidade de Clientes:** Investigar e corrigir quaisquer problemas que impeçam a exibição ou gerenciamento de clientes.
-*   **Funcionalidade Financeiro:** Investigar e corrigir quaisquer problemas que impeçam a exibição ou gerenciamento de dados financeiros.
 *   **Funcionalidade de Estoque:** Investigar e corrigir quaisquer problemas relacionados ao gerenciamento de estoque.
 *   **Implementar Seletor de Empresa:** Desenvolver uma solução robusta para o seletor de empresa que se integre corretamente com o contexto de autenticação e não cause erros de compilação ou runtime.
