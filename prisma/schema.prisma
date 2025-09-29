@@ -241,6 +241,7 @@ model Pedido {
   status               StatusPedido
   valorTotal           Decimal
   dataPedido           DateTime              @default(now())
+  validadeOrcamento    DateTime?
   dataEntrega          DateTime?
   frete                Decimal?              @default(0)
   desconto             Decimal?              @default(0)

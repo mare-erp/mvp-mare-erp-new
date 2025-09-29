@@ -36,7 +36,7 @@ async function main() {
     },
   });
 
-  console.log('Empresa criada:', empresa.nome);
+  console.log('Empresa criada:', empresa.nome, 'ID:', empresa.id);
 
   // Criar usuário admin
   const senhaHash = await bcrypt.hash('123456', 10);
@@ -153,7 +153,7 @@ async function main() {
         numeroPedido: 1,
         status: 'VENDIDO',
         valorTotal: 350.00,
-        dataPedido: new Date('2024-09-01'),
+        dataPedido: new Date('2025-09-01'),
       },
     }),
     // Orçamento
@@ -165,7 +165,7 @@ async function main() {
         numeroPedido: 2,
         status: 'ORCAMENTO',
         valorTotal: 750.00,
-        dataPedido: new Date('2024-09-15'),
+        dataPedido: new Date('2025-09-15'),
       },
     }),
     // Pedido recusado
@@ -177,7 +177,7 @@ async function main() {
         numeroPedido: 3,
         status: 'RECUSADO',
         valorTotal: 200.00,
-        dataPedido: new Date('2024-09-10'),
+        dataPedido: new Date('2025-09-10'),
       },
     }),
   ]);

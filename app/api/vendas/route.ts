@@ -4,6 +4,8 @@ import { prisma } from '@/app/lib/prisma';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { StatusPedido } from '@prisma/client';
+import { JWT_SECRET } from '@/app/lib/config';
+
 
 interface TokenPayload {
   empresaId: string;
@@ -16,18 +18,35 @@ export async function GET(request: NextRequest) {
     const token = cookieStore.get('auth-token')?.value;
     if (!token) return NextResponse.json({ message: 'Não autorizado' }, { status: 401 });
 
-    const { empresaId } = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
+    const { empresaId } = jwt.verify(token, JWT_SECRET) as TokenPayload;
 
     const { searchParams } = new URL(request.url);
     const usuarioId = searchParams.get('usuarioId');
     const status = searchParams.get('status');
+    const dataInicio = searchParams.get('dataInicio');
+    const dataFim = searchParams.get('dataFim');
+
+    const where: any = {
+      empresaId,
+    };
+
+    if (usuarioId) {
+      where.usuarioId = usuarioId;
+    }
+
+    if (status) {
+      where.status = status as StatusPedido;
+    }
+
+    if (dataInicio && dataFim) {
+      where.dataPedido = {
+        gte: new Date(dataInicio),
+        lte: new Date(`${dataFim}T23:59:59.999Z`),
+      };
+    }
 
     const pedidos = await prisma.pedido.findMany({
-      where: {
-        empresaId,
-        ...(usuarioId && { usuarioId }),
-        ...(status && { status: status as StatusPedido }),
-      },
+      where,
       include: {
         cliente: { select: { id: true, nome: true } },
         usuario: { select: { id: true, nome: true } },
@@ -66,7 +85,7 @@ export async function POST(request: NextRequest) {
     const token = cookieStore.get('auth-token')?.value;
     if (!token) return NextResponse.json({ message: 'Não autorizado' }, { status: 401 });
 
-    const { empresaId, userId } = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
+    const { empresaId, userId } = jwt.verify(token, JWT_SECRET) as TokenPayload;
 
     const { clienteId, itens, observacoes } = await request.json();
 
@@ -77,13 +96,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const produtos = await prisma.produto.findMany({
+      where: {
+        id: { in: itens.map((item: any) => item.produtoId) },
+        empresaId,
+      },
+    });
+
+    const produtoMap = new Map(produtos.map(p => [p.id, p]));
+
     let valorTotal = 0;
     const itensParaCriar = [];
 
     for (const item of itens) {
-      const produto = await prisma.produto.findUnique({
-        where: { id: item.produtoId, empresaId },
-      });
+      const produto = produtoMap.get(item.produtoId);
 
       if (!produto) {
         return NextResponse.json({ error: `Produto com ID ${item.produtoId} não encontrado.` }, { status: 404 });
@@ -94,30 +120,11 @@ export async function POST(request: NextRequest) {
 
       itensParaCriar.push({
         produtoId: produto.id,
+        descricao: produto.nome,
         quantidade: item.quantidade,
         precoUnitario: produto.preco,
         subtotal: subtotal,
       });
-
-      // Se for produto, subtrair do estoque
-      if (produto.tipo === 'PRODUTO') {
-        await prisma.produto.update({
-          where: { id: produto.id },
-          data: {
-            quantidadeEstoque: { decrement: item.quantidade },
-          },
-        });
-
-        await prisma.movimentacaoEstoque.create({
-          data: {
-            produtoId: produto.id,
-            tipo: 'SAIDA',
-            quantidade: item.quantidade,
-            observacao: `Venda - Pedido ${clienteId}`,
-            empresaId,
-          },
-        });
-      }
     }
 
     // Gerar número do pedido sequencial
@@ -131,7 +138,7 @@ export async function POST(request: NextRequest) {
       data: {
         numeroPedido: proximoNumero,
         clienteId,
-        vendedorId: userId, // O usuário logado é o vendedor
+        usuarioId: userId, // O usuário logado é o vendedor
         status: StatusPedido.ORCAMENTO, // Status inicial
         valorTotal: valorTotal,
         observacoesNF: observacoes || null,
@@ -140,6 +147,29 @@ export async function POST(request: NextRequest) {
           create: itensParaCriar,
         },
       },
+    });
+
+    // Atualizar estoque e criar movimentação em uma transação
+    await prisma.$transaction(async (tx) => {
+      for (const item of itens) {
+        const produto = produtoMap.get(item.produtoId);
+        if (produto && produto.tipo === 'PRODUTO') {
+          await tx.produto.update({
+            where: { id: produto.id },
+            data: { quantidadeEstoque: { decrement: item.quantidade } },
+          });
+
+          await tx.movimentacaoEstoque.create({
+            data: {
+              produtoId: produto.id,
+              tipo: 'SAIDA',
+              quantidade: item.quantidade,
+              observacao: `Venda - Pedido ${novoPedido.numeroPedido}`,
+              empresaId,
+            },
+          });
+        }
+      }
     });
 
     return NextResponse.json({

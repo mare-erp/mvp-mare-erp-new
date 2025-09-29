@@ -34,11 +34,11 @@ interface HeaderProps {
   onEmpresaChange?: (empresaId: string | null) => void;
 }
 
-export default function Header({ 
-  usuario, 
-  organizacao, 
-  empresaSelecionada, 
-  onEmpresaChange 
+export default function Header({
+  usuario,
+  organizacao,
+  empresaSelecionada,
+  onEmpresaChange
 }: HeaderProps) {
   const router = useRouter();
   const [isDropdownOpen, setDropdownOpen] = useState(false);
@@ -59,7 +59,7 @@ export default function Header({
     // TODO: Implementar busca de notificações
     setNotificacoes(3);
   }, []);
-  
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -110,8 +110,8 @@ export default function Header({
         {/* Informações do usuário */}
         <div className="flex items-center gap-3">
           {usuario?.fotoPerfil ? (
-            <img 
-              src={usuario.fotoPerfil} 
+            <img
+              src={usuario.fotoPerfil}
               alt={usuario.nome}
               className="w-8 h-8 rounded-full object-cover"
             />
@@ -127,20 +127,19 @@ export default function Header({
             </p>
           </div>
         </div>
-        
+
         {/* Menu de configurações */}
         <div className="relative" ref={dropdownRef}>
-          <button 
+          <button
             onClick={() => setDropdownOpen(!isDropdownOpen)}
             className="p-2 rounded-full hover:bg-gray-100 transition-colors"
           >
             <MoreVertical className="h-6 w-6 text-gray-700" />
           </button>
-          
+
           {isDropdownOpen && <SettingsDropdown onLogout={handleLogout} />}
         </div>
       </div>
     </header>
   );
 }
-

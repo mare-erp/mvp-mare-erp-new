@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { prisma } from './prisma';
 import { RoleOrganizacao } from '@prisma/client';
+import { JWT_SECRET } from './config';
+
 
 export interface TokenPayload {
   userId: string;

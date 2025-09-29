@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
-import { DataProvider } from '@/app/contexts/DataContexts'; 
+import { DataProvider } from '@/app/contexts/DataContexts';
 
 export default function DashboardLayout({
   children,
@@ -19,11 +19,11 @@ export default function DashboardLayout({
   return (
     <DataProvider>
       <div className="min-h-screen w-full bg-gray-50">
-        <Sidebar 
-          isCollapsed={isSidebarCollapsed} 
+        <Sidebar
+          isCollapsed={isSidebarCollapsed}
           toggleSidebar={toggleSidebar}
         />
-        <div 
+        <div
           className={`
             relative transition-all duration-300 ease-in-out
             ${isSidebarCollapsed ? 'pl-20' : 'pl-64'}

@@ -91,16 +91,32 @@ export default function VendasPage() {
     const pedidosUrl = `/api/vendas?status=${statusFiltro}&${params.toString()}`;
     
     try {
+      console.log('Fetching summary from:', summaryUrl);
+      console.log('Fetching pedidos from:', pedidosUrl);
       const [summaryRes, pedidosRes] = await Promise.all([
         fetch(summaryUrl),
         fetch(pedidosUrl),
       ]);
 
-      if (!summaryRes.ok) throw new Error('Falha ao carregar resumo.');
-      if (!pedidosRes.ok) throw new Error('Falha ao carregar os pedidos.');
+      if (!summaryRes.ok) {
+        const errorText = await summaryRes.text();
+        console.error('Summary API error:', summaryRes.status, errorText);
+        throw new Error(`Falha ao carregar resumo: ${summaryRes.status} - ${errorText}`);
+      }
+      if (!pedidosRes.ok) {
+        const errorText = await pedidosRes.text();
+        console.error('Pedidos API error:', pedidosRes.status, errorText);
+        throw new Error(`Falha ao carregar os pedidos: ${pedidosRes.status} - ${errorText}`);
+      }
 
-      setSummary(await summaryRes.json());
-      setPedidos(await pedidosRes.json());
+      const summaryData = await summaryRes.json();
+      const pedidosData = await pedidosRes.json();
+
+      console.log('Summary data received:', summaryData);
+      console.log('Pedidos data received:', pedidosData);
+
+      setSummary(summaryData);
+      setPedidos(pedidosData);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -117,8 +133,10 @@ export default function VendasPage() {
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (dataInicio && dataFim) {
+      fetchData();
+    }
+  }, [dataInicio, dataFim, fetchData]);
 
   const vendedoresOptions = useMemo(() => {
     return [{ label: 'Todos', value: '' }, ...membros.map(m => ({ label: m.usuario.nome, value: m.usuarioId }))];
