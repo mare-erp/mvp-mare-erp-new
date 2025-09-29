@@ -32,5 +32,15 @@
 ### Próximos Passos (A Fazer):
 
 *   **Funcionalidade de Clientes:** Investigar e corrigir quaisquer problemas que impeçam a exibição ou gerenciamento de clientes.
+*   **Funcionalidade Financeiro - Melhorias de UI/UX no Modal "Nova Transação":**
+    *   **Problema:** O modal "Nova Transação" apresenta um layout vertical extenso, dificultando a visualização e o acesso ao botão de salvar, especialmente em telas menores. O campo "Cliente" é genérico e precisa acomodar fornecedores ou outras partes envolvidas.
+    *   **Proposta de Solução:**
+        1.  **Organização de Campos Lado a Lado:**
+            *   **Tipo e Status:** Agrupar "Tipo de Transação" (Receita/Despesa) e "Status da Transação" (Pendente/Paga/Atrasada/Cancelada) lado a lado para otimizar o espaço vertical.
+            *   **Data de Vencimento e Data de Pagamento:** Posicionar "Data de Vencimento" e "Data de Pagamento" (se aplicável) lado a lado, dada a sua relação lógica.
+            *   **Valor e Categoria:** Considerar colocar "Valor" e "Categoria" (se for um campo simples) lado a lado.
+        2.  **Barra de Rolagem para Conteúdo do Modal:** Implementar uma barra de rolagem vertical (`overflow-y-auto` ou `overflow-y-scroll` com Tailwind CSS) na área de conteúdo do modal. Isso garantirá que o botão "Salvar" permaneça acessível mesmo com formulários mais longos, eliminando a necessidade de diminuir o zoom da página.
+        3.  **Renomear Campo "Cliente" para "Parte Envolvida" ou "Contato Relacionado":** Alterar o rótulo do campo que atualmente se refere a "Cliente" para um termo mais abrangente como "Parte Envolvida" ou "Contato Relacionado". "Parte Envolvida" é sugerido por ser claro, formal e cobrir tanto clientes quanto fornecedores, tornando o formulário mais flexível.
+    *   **Arquivo a ser Modificado:** `app/(dashboard)/financeiro/components/TransacaoModal.tsx`
 *   **Funcionalidade de Estoque:** Investigar e corrigir quaisquer problemas relacionados ao gerenciamento de estoque.
 *   **Implementar Seletor de Empresa:** Desenvolver uma solução robusta para o seletor de empresa que se integre corretamente com o contexto de autenticação e não cause erros de compilação ou runtime.

@@ -140,8 +140,8 @@ export default function TransacaoModal({ onClose, onSave, editingTransacaoId }: 
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center">
-      <div className="bg-white rounded-lg shadow-xl z-50 w-full max-w-md h-auto flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center" onClick={onClose}>
+      <div className="bg-white rounded-lg shadow-xl z-50 w-full max-w-xl h-auto flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="p-6 border-b flex justify-between items-center">
           <h2 className="text-xl font-bold">
             {editingTransacaoId ? 'Editar Transação' : 'Nova Transação'}
@@ -149,42 +149,48 @@ export default function TransacaoModal({ onClose, onSave, editingTransacaoId }: 
           <button onClick={onClose}><X className="w-5 h-5" /></button>
         </div>
 
-        <main className="p-6 overflow-y-auto">
+        <main className="p-6 overflow-y-auto flex-grow">
           <div className="space-y-4">
             <div>
               <label htmlFor="descricao" className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
               <Input id="descricao" name="descricao" type="text" required value={formData.descricao} onChange={handleChange} />
             </div>
-            <div>
-              <label htmlFor="valor" className="block text-sm font-medium text-gray-700 mb-1">Valor</label>
-              <Input id="valor" name="valor" type="number" step="0.01" required value={formData.valor} onChange={handleChange} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Dropdown
+                label="Tipo"
+                options={tipoTransacaoOptions}
+                value={formData.tipo}
+                onChange={(value) => handleDropdownChange('tipo', value)}
+              />
+              <Dropdown
+                label="Status"
+                options={statusTransacaoOptions}
+                value={formData.status}
+                onChange={(value) => handleDropdownChange('status', value)}
+              />
             </div>
-            <Dropdown
-              label="Tipo"
-              options={tipoTransacaoOptions}
-              value={formData.tipo}
-              onChange={(value) => handleDropdownChange('tipo', value)}
-            />
-            <Dropdown
-              label="Status"
-              options={statusTransacaoOptions}
-              value={formData.status}
-              onChange={(value) => handleDropdownChange('status', value)}
-            />
-            <div>
-              <label htmlFor="dataVencimento" className="block text-sm font-medium text-gray-700 mb-1">Data de Vencimento</label>
-              <Input id="dataVencimento" name="dataVencimento" type="date" required value={formData.dataVencimento} onChange={handleChange} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="dataVencimento" className="block text-sm font-medium text-gray-700 mb-1">Data de Vencimento</label>
+                <Input id="dataVencimento" name="dataVencimento" type="date" required value={formData.dataVencimento} onChange={handleChange} />
+              </div>
+              <div>
+                <label htmlFor="dataPagamento" className="block text-sm font-medium text-gray-700 mb-1">Data de Pagamento (opcional)</label>
+                <Input id="dataPagamento" name="dataPagamento" type="date" value={formData.dataPagamento} onChange={handleChange} />
+              </div>
             </div>
-            <div>
-              <label htmlFor="dataPagamento" className="block text-sm font-medium text-gray-700 mb-1">Data de Pagamento (opcional)</label>
-              <Input id="dataPagamento" name="dataPagamento" type="date" value={formData.dataPagamento} onChange={handleChange} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="valor" className="block text-sm font-medium text-gray-700 mb-1">Valor</label>
+                <Input id="valor" name="valor" type="number" step="0.01" required value={formData.valor} onChange={handleChange} />
+              </div>
+              <Dropdown
+                label="Parte Envolvida (opcional)"
+                options={clienteOptions}
+                value={formData.clienteId}
+                onChange={(value) => handleDropdownChange('clienteId', value)}
+              />
             </div>
-            <Dropdown
-              label="Cliente (opcional)"
-              options={clienteOptions}
-              value={formData.clienteId}
-              onChange={(value) => handleDropdownChange('clienteId', value)}
-            />
             <div>
               <label htmlFor="observacoes" className="block text-sm font-medium text-gray-700 mb-1">Observações (opcional)</label>
               <textarea
