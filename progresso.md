@@ -28,19 +28,28 @@
     *   **Solução:**
         1.  **Implementado Componente `StatCard`:** O componente `StatCard` foi definido em `app/(dashboard)/financeiro/page.tsx` para exibir os cards de resumo.
         2.  **Implementada Renderização de Transações:** Adicionado um loop dentro da seção `<tbody>` em `app/(dashboard)/financeiro/page.tsx` para iterar sobre o array `transacoes` e renderizar cada transação como uma linha da tabela.
+        3.  **Melhorias de UI/UX no Modal "Nova Transação":**
+            *   **Organização de Campos Lado a Lado:** Campos como Tipo/Status, Data de Vencimento/Pagamento e Valor/Parte Envolvida foram agrupados horizontalmente para otimizar o espaço.
+            *   **Barra de Rolagem para Conteúdo do Modal:** Adicionada barra de rolagem vertical (`overflow-y-auto`) à área de conteúdo do modal para melhor acessibilidade.
+            *   **Renomeado Campo "Cliente" para "Parte Envolvida":** O rótulo do campo `clienteId` foi alterado para "Parte Envolvida (opcional)" para maior abrangência.
 
 ### Próximos Passos (A Fazer):
 
 *   **Funcionalidade de Clientes:** Investigar e corrigir quaisquer problemas que impeçam a exibição ou gerenciamento de clientes.
-*   **Funcionalidade Financeiro - Melhorias de UI/UX no Modal "Nova Transação":**
-    *   **Problema:** O modal "Nova Transação" apresenta um layout vertical extenso, dificultando a visualização e o acesso ao botão de salvar, especialmente em telas menores. O campo "Cliente" é genérico e precisa acomodar fornecedores ou outras partes envolvidas.
-    *   **Proposta de Solução:**
-        1.  **Organização de Campos Lado a Lado:**
-            *   **Tipo e Status:** Agrupar "Tipo de Transação" (Receita/Despesa) e "Status da Transação" (Pendente/Paga/Atrasada/Cancelada) lado a lado para otimizar o espaço vertical.
-            *   **Data de Vencimento e Data de Pagamento:** Posicionar "Data de Vencimento" e "Data de Pagamento" (se aplicável) lado a lado, dada a sua relação lógica.
-            *   **Valor e Categoria:** Considerar colocar "Valor" e "Categoria" (se for um campo simples) lado a lado.
-        2.  **Barra de Rolagem para Conteúdo do Modal:** Implementar uma barra de rolagem vertical (`overflow-y-auto` ou `overflow-y-scroll` com Tailwind CSS) na área de conteúdo do modal. Isso garantirá que o botão "Salvar" permaneça acessível mesmo com formulários mais longos, eliminando a necessidade de diminuir o zoom da página.
-        3.  **Renomear Campo "Cliente" para "Parte Envolvida" ou "Contato Relacionado":** Alterar o rótulo do campo que atualmente se refere a "Cliente" para um termo mais abrangente como "Parte Envolvida" ou "Contato Relacionado". "Parte Envolvida" é sugerido por ser claro, formal e cobrir tanto clientes quanto fornecedores, tornando o formulário mais flexível.
-    *   **Arquivo a ser Modificado:** `app/(dashboard)/financeiro/components/TransacaoModal.tsx`
 *   **Funcionalidade de Estoque:** Investigar e corrigir quaisquer problemas relacionados ao gerenciamento de estoque.
 *   **Implementar Seletor de Empresa:** Desenvolver uma solução robusta para o seletor de empresa que se integre corretamente com o contexto de autenticação e não cause erros de compilação ou runtime.
+*   **Funcionalidade Financeiro - Gerenciamento de Contas e Transferências:**
+    *   **Objetivo:** Permitir o cadastro e gerenciamento de contas bancárias, transferências entre elas e a associação de transações a contas específicas.
+    *   **Mudanças Envolvidas:**
+        1.  **Schema do Banco de Dados (`prisma/schema.prisma`):**
+            *   Verificar e, se necessário, ajustar o modelo `ContaBancaria` para garantir que contenha todos os campos relevantes (`nomeBanco`, `agencia`, `conta`, `saldo`, `empresaId`).
+            *   Confirmar que o modelo `TransacaoFinanceira` possui o campo `contaBancariaId` para associação.
+        2.  **APIs (Backend):**
+            *   **Novas APIs para `ContaBancaria`:** Implementar endpoints CRUD (Create, Read, Update, Delete) para gerenciar contas bancárias (ex: `GET /api/financeiro/contas`, `POST /api/financeiro/contas`, `PUT /api/financeiro/contas/[id]`, `DELETE /api/financeiro/contas/[id]`).
+            *   **Nova API para Transferências:** Criar um endpoint específico para transferências entre contas (ex: `POST /api/financeiro/transferencias`). Este endpoint deve: decrementar o saldo da conta de origem, incrementar o saldo da conta de destino e criar duas transações financeiras (débito e crédito) para registrar a transferência, tudo dentro de uma transação Prisma para garantir a atomicidade.
+            *   **Modificar API de `TransacaoFinanceira`:** Os endpoints `POST` e `PUT` para transações precisarão aceitar `contaBancariaId` como um campo opcional. Ao receber este ID, o saldo da `ContaBancaria` associada deve ser atualizado (incrementado para Receitas, decrementado para Despesas), também dentro de uma transação Prisma.
+        3.  **Frontend:**
+            *   **Nova Página para Gerenciamento de Contas:** Criar uma página dedicada (`app/(dashboard)/financeiro/contas/page.tsx`) para listar, adicionar, editar e excluir contas bancárias.
+            *   **Novo Modal para Transferências:** Desenvolver um modal que permita ao usuário selecionar contas de origem/destino, inserir o valor e iniciar a transferência.
+            *   **Modificar Modal "Nova Transação" (`TransacaoModal.tsx`):** Adicionar um novo campo `Dropdown` para "Conta Bancária" (Bank Account). Este dropdown será populado com a lista de contas bancárias obtidas da nova API (`/api/financeiro/contas`). O estado `formData` e a função `handleSubmit` no modal precisarão ser atualizados para incluir e enviar o `contaBancariaId` para a API.
+            *   **Atualizar `DataContexts.tsx` (Opcional):** Se os dados das contas bancárias forem necessários globalmente, o `DataProvider` pode ser atualizado para buscá-los. Caso contrário, o `TransacaoModal` pode buscá-los diretamente.

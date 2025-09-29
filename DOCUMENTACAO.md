@@ -1,15 +1,20 @@
 # Documentação Maré ERP
 
 Este documento é o guia central e a fonte da verdade para a arquitetura, conceitos de negócio, fluxos de dados e funcionalidades do sistema Maré ERP. Ele foi projetado para ser um projeto vivo, claro e completo, garantindo a construção de um software robusto e escalável.
+Este documento é o guia central e a **fonte da verdade** para a arquitetura, conceitos de negócio, fluxos de dados e funcionalidades do sistema Maré ERP. Ele foi projetado para ser um projeto vivo, claro e completo, garantindo a construção de um software robusto, escalável e de fácil manutenção.
 
 ## 1. Visão Geral e Conceitos de Negócio
 
 O Maré ERP é um sistema de gestão multi-empresa (multi-tenant) projetado para centralizar e simplificar as operações de pequenas e médias empresas. A arquitetura é construída sobre uma hierarquia clara de entidades de negócio.
+O Maré ERP é um sistema de gestão **multi-empresa (multi-tenant)** projetado para centralizar e simplificar as operações de pequenas e médias empresas. A arquitetura é construída sobre uma hierarquia clara de entidades de negócio.
 
 - **Organização:** A entidade principal que agrupa empresas e usuários. É o nível mais alto de acesso.
 - **Empresa:** Uma entidade de negócio (com CNPJ) que pertence a uma `Organizacao`. A maioria dos dados (clientes, produtos, pedidos) é vinculada a uma empresa.
+- **Organização:** A entidade principal que agrupa empresas e usuários. É o nível mais alto de acesso. Uma organização representa o cliente que assina o serviço.
+- **Empresa:** Uma entidade de negócio (com CNPJ) que pertence a uma `Organizacao`. A maioria dos dados (clientes, produtos, pedidos) é vinculada a uma empresa. Cada empresa funciona como um "inquilino" (tenant) isolado dentro da organização.
 - **Usuário/Membro:** Usuários que pertencem a uma organização e têm acesso às suas empresas. A relação é gerenciada pela tabela `MembroOrganizacao`.
 - **Multi-Empresa:** O sistema permite que um usuário transite entre diferentes empresas de sua organização através de um seletor no cabeçalho. Também é possível ter uma visão consolidada de dados de todas as empresas.
+- **Vendedor:** Não é um modelo de dados separado. O "Vendedor" de um pedido é o `Usuario` que o criou. A ligação é feita pelo campo `usuarioId` no modelo `Pedido`.
 
 ### Relações Fundamentais
 - Um `Usuario` pode ser membro de várias `Organizacoes`.
@@ -17,10 +22,12 @@ O Maré ERP é um sistema de gestão multi-empresa (multi-tenant) projetado para
 - Uma `Organizacao` pode ter várias `Empresas`.
 - Cada `Cliente`, `Produto`, `Pedido` e `TransacaoFinanceira` pertence a uma única `Empresa`. Este vínculo (`empresaId`) é a chave para o isolamento dos dados (tenancy).
 - Um `Pedido` é criado por um `Usuario` específico, estabelecendo um vínculo direto (`usuarioId`) para rastreabilidade.
+- Um `Pedido` é criado por um `Usuario` específico (o vendedor), estabelecendo um vínculo direto (`usuarioId`) para rastreabilidade e filtros.
 
 ## 2. Estrutura do Projeto Detalhada
 
 O projeto utiliza o App Router do Next.js, que favorece uma organização baseada em funcionalidades e rotas.
+O projeto utiliza o **App Router** do Next.js, que favorece uma organização baseada em funcionalidades e rotas.
 
 - `app/`: Código principal da aplicação Next.js (App Router).
   - `(auth)/`: Grupo de rotas para páginas de autenticação (login, cadastro, etc.). Não afeta a URL.
@@ -45,8 +52,11 @@ O projeto utiliza o App Router do Next.js, que favorece uma organização basead
 - `public/`: Arquivos estáticos (imagens, logos, etc.).
 - `progresso.md`: Log de atualizações e refatorações.
 - `DOCUMENTACAO.md`: Este arquivo.
+ 
+## 3. Arquitetura e Fluxo de Dados (O Mapa Global)
 
 ## 3. Arquitetura e Fluxo de Dados
+O sistema é uma aplicação Next.js full-stack, onde o mesmo projeto contém o Frontend (React) e o Backend (API Routes).
 
 ### 3.1. Arquitetura Frontend
 - **Componentização:** O sistema utiliza uma mistura de Server Components e Client Components (`'use client'`).
@@ -62,6 +72,7 @@ O projeto utiliza o App Router do Next.js, que favorece uma organização basead
   4. A função `fetch` faz uma chamada para a API interna correspondente (ex: `/api/vendas`).
   5. Ao receber a resposta, os dados são armazenados no estado do componente (ex: `setPedidos(data)`).
   6. `isLoading` se torna `false`, e o componente é re-renderizado com os dados reais.
+### 3.1. As Três Camadas
 
 ### 3.2. Arquitetura Backend (API)
 - **Route Handlers:** As APIs são construídas usando Route Handlers do Next.js dentro do diretório `app/api/`. Cada rota exporta funções que correspondem aos métodos HTTP (`GET`, `POST`, `PUT`, `DELETE`).
@@ -80,6 +91,61 @@ O projeto utiliza o App Router do Next.js, que favorece uma organização basead
      - Utiliza o `empresaId` do `AuthContext` para filtrar todas as consultas ao banco de dados com o **Prisma**, garantindo o isolamento dos dados (tenancy).
      - Executa as operações no banco (leitura, escrita, etc.).
      - Retorna a resposta em formato JSON com o status HTTP apropriado.
+1.  **Frontend (Camada de Apresentação)**
+    - **O quê:** Tudo que o usuário vê e interage no navegador.
+    - **Tecnologias:** React, Next.js (App Router), Tailwind CSS.
+    - **Responsabilidades:**
+        - Renderizar a interface do usuário (UI).
+        - Gerenciar o estado da UI (modais abertos, dados de formulários, filtros selecionados).
+        - Lidar com eventos do usuário (cliques, digitação).
+        - Fazer requisições HTTP para o Backend (API) para buscar ou enviar dados.
+        - Apresentar estados de carregamento (skeletons) e de erro.
+    - **Onde vive:** Principalmente nos arquivos `page.tsx` e `components/` dentro de `app/(dashboard)/`.
+
+2.  **Backend (Camada de Lógica e Negócio)**
+    - **O quê:** O "cérebro" do sistema que roda no servidor.
+    - **Tecnologias:** Next.js (Route Handlers), Zod.
+    - **Responsabilidades:**
+        - Receber requisições do Frontend.
+        - **Autenticação e Autorização:** Verificar se o usuário está logado e se tem permissão para realizar a ação (usando o HOC `withAuth`).
+        - **Validação:** Garantir que os dados recebidos são válidos e seguros (usando Zod).
+        - **Regras de Negócio:** Executar a lógica principal (ex: calcular total de um pedido, dar baixa em estoque).
+        - Orquestrar a comunicação com o Banco de Dados.
+    - **Onde vive:** Nos arquivos `route.ts` dentro de `app/api/`.
+
+3.  **Banco de Dados (Camada de Persistência)**
+    - **O quê:** Onde os dados são armazenados de forma permanente.
+    - **Tecnologias:** PostgreSQL, Prisma (ORM).
+    - **Responsabilidades:**
+        - Armazenar os dados de forma segura e estruturada.
+        - Garantir a integridade dos dados através de relações e restrições.
+        - Executar as consultas (queries) solicitadas pelo Backend.
+    - **Onde vive:** A estrutura é definida no `prisma/schema.prisma`. O acesso é feito exclusivamente pelo Backend através do Prisma Client.
+
+### 3.2. Fluxo de uma Interação Completa (Exemplo: Criar um Cliente)
+
+Para entender como as camadas se interligam, vamos seguir o fluxo de criação de um novo cliente:
+
+1.  **[FRONTEND]** O usuário clica em "Novo Cliente" na página `/clientes`. Um modal (componente React) é aberto.
+2.  **[FRONTEND]** O usuário preenche o formulário e clica em "Salvar".
+3.  **[FRONTEND]** A função `handleSubmit` no componente do modal é acionada. Ela monta um objeto `payload` com os dados do formulário.
+4.  **[FRONTEND]** A função `fetch` é chamada: `fetch('/api/clientes', { method: 'POST', body: JSON.stringify(payload) })`.
+5.  **[BACKEND]** A requisição `POST` chega ao endpoint `app/api/clientes/route.ts`.
+6.  **[BACKEND]** O HOC `withAuth` intercepta a requisição:
+    - Lê o token JWT do cookie `auth-token`.
+    - Valida o token e extrai o `TokenPayload` (`userId`, `organizacaoId`, `empresaId`).
+    - Verifica se o usuário tem acesso à organização e à empresa.
+    - Se tudo estiver OK, injeta o `AuthContext` e chama o `postHandler`.
+7.  **[BACKEND]** Dentro do `postHandler`:
+    - O `clienteSchema` (Zod) valida o `body` da requisição. Se for inválido, retorna um erro 400.
+    - A lógica de negócio é executada (ex: verificar se o CPF/CNPJ já existe).
+    - O Prisma é chamado para criar o cliente: `prisma.cliente.create({ data: { ...payload, empresaId: context.empresaId } })`.
+8.  **[BANCO DE DADOS]** O Prisma traduz a chamada para uma query SQL `INSERT INTO "Cliente" (...) VALUES (...)` e a envia para o PostgreSQL.
+9.  **[BANCO DE DADOS]** O PostgreSQL insere o novo registro e retorna o sucesso da operação.
+10. **[BACKEND]** O Prisma recebe a confirmação e retorna o objeto do novo cliente para o `postHandler`.
+11. **[BACKEND]** O `postHandler` envia uma resposta JSON com status `201 Created` e o objeto do novo cliente.
+12. **[FRONTEND]** A `Promise` do `fetch` é resolvida. O código verifica se `response.ok` é `true`.
+13. **[FRONTEND]** O modal é fechado e a lista de clientes é atualizada (chamando `refetchClientes` ou uma função similar), mostrando o novo cliente na tabela.
 
 ## 3. Dependências Principais
 
