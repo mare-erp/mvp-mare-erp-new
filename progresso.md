@@ -1,3 +1,26 @@
+## Relatório de Progresso - 07 de Outubro de 2025
+
+### Correção de Instabilidade e Configuração do Ambiente de Desenvolvimento
+
+1.  **Diagnóstico de Conexão com Banco de Dados:**
+    *   **Problema:** Acesso inicial ao `localhost` não se conectava ao banco de dados, impedindo login e carregamento de dados.
+    *   **Diagnóstico:** Identificado que uma variável de ambiente `DATABASE_URL` a nível de sistema estava sobrescrevendo a configuração do arquivo `.env.local`.
+    *   **Solução:** A variável de sistema foi removida, garantindo que a aplicação usasse a configuração local correta.
+
+2.  **Sincronização do Schema do Banco de Dados:**
+    *   **Problema:** Após corrigir a conexão, a aplicação apresentou o erro `P2021: The table public.Usuario does not exist`, indicando que as tabelas do banco de dados não haviam sido criadas.
+    *   **Solução:** Executado o comando `npx prisma migrate dev` para aplicar as migrações e criar todas as tabelas necessárias conforme o `schema.prisma`.
+
+3.  **População de Dados Iniciais (Seed):**
+    *   **Problema:** Com as tabelas criadas, o login falhava com "Credenciais inválidas", pois a tabela `Usuario` estava vazia.
+    *   **Solução:** Executado o script `npx tsx scripts/seed.ts` para popular o banco de dados com dados de teste, incluindo um usuário administrador (`admin@teste.com`).
+
+4.  **Ajuste e Reversão de Dados de Teste:**
+    *   **Problema:** Houve instabilidade na aplicação e erros de carregamento de dados após manipulações no script de seed para ajustar os dados de teste de pedidos.
+    *   **Solução:** O código foi estabilizado revertendo para a versão do script de seed que cria 3 pedidos com o status `VENDIDO`. O histórico de commits foi atualizado para refletir essa estabilização.
+
+---
+
 ## Relatório de Progresso - 28 de Setembro de 2025
 
 ### Problemas Resolvidos:
