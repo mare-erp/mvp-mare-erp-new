@@ -163,7 +163,7 @@ async function main() {
         clienteId: clientes[1].id,
         usuarioId: usuario.id,
         numeroPedido: 2,
-        status: 'ORCAMENTO',
+        status: 'VENDIDO',
         valorTotal: 750.00,
         dataPedido: new Date('2025-09-15'),
       },
@@ -175,7 +175,7 @@ async function main() {
         clienteId: clientes[2].id,
         usuarioId: usuario.id,
         numeroPedido: 3,
-        status: 'RECUSADO',
+        status: 'VENDIDO',
         valorTotal: 200.00,
         dataPedido: new Date('2025-09-10'),
       },
@@ -259,3 +259,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
