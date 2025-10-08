@@ -44,7 +44,7 @@
 
 - Endpoints por Módulo (principais)
   - Autenticação: `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`, `/api/auth/sign-up`.
-  - Organização/Empresas: `/api/organizacao`, `/api/organizacao/current`, `/api/organizacoes`, `/api/organizacoes/[id]/empresas`, `/api/empresa`, `/api/empresa/current`.
+  - Organização/Empresas: `/api/organizacoes`, `/api/organizacoes/[id]/empresas`, `/api/empresa`, `/api/empresa/current`.
   - Vendas: `/api/vendas`, `/api/vendas/summary`, `/api/vendas/[id]`, `/api/vendas/[id]/pdf`, `/api/vendas/[id]/clone`.
   - Clientes: `/api/clientes`, `/api/clientes/[id]`, `/api/clientes/quick-create`.
   - Estoque: `/api/estoque/produtos`, `/api/estoque/produtos/[id]`, `/api/estoque/metricas`.
