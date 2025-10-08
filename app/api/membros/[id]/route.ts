@@ -1,48 +1,82 @@
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
+import { withAuth, AuthContext } from '@/app/lib/auth';
+import { RoleOrganizacao } from '@prisma/client';
 
-interface TokenPayload { userId: string; empresaId: string; role: string; }
+// Handler para buscar um membro específico
+async function getHandler(req: NextRequest, context: AuthContext) {
+  const membroId = req.nextUrl.pathname.split('/').pop();
+  try {
+    const membro = await prisma.membroOrganizacao.findUnique({
+      where: { id: membroId, organizacaoId: context.organizacaoId },
+      include: { usuario: { select: { nome: true, email: true } } },
+    });
+    if (!membro) {
+      return NextResponse.json({ message: 'Membro não encontrado.' }, { status: 404 });
+    }
+    return NextResponse.json(membro);
+  } catch (error) {
+    return NextResponse.json({ message: 'Erro ao buscar membro.' }, { status: 500 });
+  }
+}
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const membroIdParaDeletar = params.id;
-  const cookieStore = cookies();
-  const token = cookieStore.get('auth-token')?.value;
+// Handler para atualizar um membro (ex: mudar a role)
+async function putHandler(req: NextRequest, context: AuthContext) {
+  const membroId = req.nextUrl.pathname.split('/').pop();
+  const { role } = await req.json();
 
-  if (!token) {
-    return NextResponse.json({ message: 'Não autorizado' }, { status: 401 });
+  if (!role || !Object.values(RoleOrganizacao).includes(role)) {
+      return NextResponse.json({ message: 'Role inválida.' }, { status: 400 });
   }
 
   try {
-    const { empresaId, role: gestorRole } = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
-
-    if (gestorRole !== 'GESTOR') {
+    if (context.role !== 'ADMIN' && context.role !== 'GESTOR') {
       return NextResponse.json({ message: 'Ação não permitida.' }, { status: 403 });
     }
 
-    const membro = await prisma.membro.findUnique({
-      where: { id: membroIdParaDeletar },
-    });
-
-    if (!membro || membro.empresaId !== empresaId) {
-      return NextResponse.json({ message: 'Membro não encontrado ou não pertence à sua empresa.' }, { status: 404 });
-    }
-    
-    if (membro.role === 'GESTOR') {
-        return NextResponse.json({ message: 'Um gestor não pode ser removido da própria empresa.' }, { status: 400 });
+    const membroParaAtualizar = await prisma.membroOrganizacao.findUnique({ where: { id: membroId } });
+    if (membroParaAtualizar?.usuarioId === context.userId) {
+        return NextResponse.json({ message: 'Você não pode alterar sua própria role.' }, { status: 403 });
     }
 
-    await prisma.membro.delete({
-      where: { id: membroIdParaDeletar },
+    const updatedMembro = await prisma.membroOrganizacao.update({
+      where: { id: membroId, organizacaoId: context.organizacaoId },
+      data: { role },
     });
-
-    return NextResponse.json({ message: 'Membro removido com sucesso.' }, { status: 200 });
-
+    return NextResponse.json(updatedMembro);
   } catch (error) {
-    return NextResponse.json({ message: 'Erro ao processar a solicitação.' }, { status: 500 });
+    return NextResponse.json({ message: 'Erro ao atualizar membro.' }, { status: 500 });
   }
 }
+
+// Handler para deletar um membro
+async function deleteHandler(req: NextRequest, context: AuthContext) {
+  const membroId = req.nextUrl.pathname.split('/').pop();
+
+  if (!membroId) {
+    return NextResponse.json({ message: 'ID do membro não fornecido.' }, { status: 400 });
+  }
+
+  try {
+    if (context.role !== 'ADMIN' && context.role !== 'GESTOR') {
+      return NextResponse.json({ message: 'Ação não permitida.' }, { status: 403 });
+    }
+
+    const membroParaDeletar = await prisma.membroOrganizacao.findUnique({ where: { id: membroId } });
+    if (membroParaDeletar?.usuarioId === context.userId) {
+      return NextResponse.json({ message: 'Você não pode remover a si mesmo.' }, { status: 403 });
+    }
+
+    await prisma.membroOrganizacao.delete({
+      where: { id: membroId, organizacaoId: context.organizacaoId },
+    });
+
+    return NextResponse.json({ message: 'Membro removido com sucesso.' });
+  } catch (error) {
+    return NextResponse.json({ message: 'Erro ao remover membro.' }, { status: 500 });
+  }
+}
+
+export const GET = withAuth(getHandler);
+export const PUT = withAuth(putHandler);
+export const DELETE = withAuth(deleteHandler);

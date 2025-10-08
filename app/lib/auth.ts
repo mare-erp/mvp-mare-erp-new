@@ -231,7 +231,10 @@ export function withAuth(
       }
 
       // Verificar acesso à empresa (se necessário)
-      if (options.requireCompany && payload.empresaId) {
+      if (options.requireCompany) {
+        if (!payload.empresaId) {
+          throw new AuthError('Nenhuma empresa selecionada');
+        }
         const hasCompanyAccess = await verifyCompanyAccess(payload.organizacaoId, payload.empresaId);
         if (!hasCompanyAccess) {
           throw new AuthError('Acesso negado à empresa');

@@ -66,6 +66,14 @@ export async function POST(request: NextRequest) {
     const primeiraOrganizacao = organizacoesAtivas[0];
     const organizacao = primeiraOrganizacao.organizacao;
 
+    // Garante que a organização tenha pelo menos uma empresa ativa
+    if (!organizacao.empresas || organizacao.empresas.length === 0) {
+      return NextResponse.json(
+        { error: 'Nenhuma empresa ativa encontrada para esta organização. Por favor, finalize a configuração.' },
+        { status: 403 }
+      );
+    }
+
     // Gerar token
     const tokenPayload = {
       userId: usuario.id,
