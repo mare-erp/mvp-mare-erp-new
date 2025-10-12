@@ -9,6 +9,47 @@ import { Button } from '@/app/components/ui/Button';
 
 export default function SetupEmpresaPage() {
   const router = useRouter();
+  const formatCNPJ = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 14);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+    if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
+    if (digits.length <= 12) {
+      return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+    }
+    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12, 14)}`;
+  };
+
+  const formatTelefone = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    if (!digits) return '';
+    if (digits.length <= 2) return `(${digits}`;
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+  };
+
+  const formatCEP = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 8);
+    if (digits.length <= 5) return digits;
+    return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+  };
+
+  const sanitizeDigits = (value: string) => value.replace(/\D/g, '');
+
+  const formatIncomingCompany = (empresa: any) => ({
+    nome: empresa.nome || '',
+    cnpj: empresa.cnpj ? formatCNPJ(empresa.cnpj) : '',
+    telefone: empresa.telefone ? formatTelefone(empresa.telefone) : '',
+    email: empresa.email || '',
+    cep: empresa.cep ? formatCEP(empresa.cep) : '',
+    rua: empresa.rua || '',
+    numero: empresa.numero || '',
+    complemento: empresa.complemento || '',
+    bairro: empresa.bairro || '',
+    cidade: empresa.cidade || '',
+    uf: empresa.uf || '',
+  });
   const [formData, setFormData] = useState({
     nome: '',
     cnpj: '',
@@ -34,19 +75,7 @@ export default function SetupEmpresaPage() {
         if (response.ok) {
           const empresa = await response.json();
           setEmpresaExistente(empresa);
-          setFormData({
-            nome: empresa.nome || '',
-            cnpj: empresa.cnpj || '',
-            telefone: empresa.telefone || '',
-            email: empresa.email || '',
-            cep: empresa.cep || '',
-            rua: empresa.rua || '',
-            numero: empresa.numero || '',
-            complemento: empresa.complemento || '',
-            bairro: empresa.bairro || '',
-            cidade: empresa.cidade || '',
-            uf: empresa.uf || '',
-          });
+          setFormData(formatIncomingCompany(empresa));
         }
       } catch (error) {
         console.error('Erro ao verificar empresa:', error);
@@ -58,7 +87,13 @@ export default function SetupEmpresaPage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      let newValue = value;
+      if (name === 'cnpj') newValue = formatCNPJ(value);
+      if (name === 'telefone') newValue = formatTelefone(value);
+      if (name === 'cep') newValue = formatCEP(value);
+      return { ...prev, [name]: newValue };
+    });
   };
 
   const buscarCEP = async (cep: string) => {
@@ -82,10 +117,11 @@ export default function SetupEmpresaPage() {
   };
 
   const handleCEPChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const cep = e.target.value.replace(/\D/g, '');
-    setFormData(prev => ({ ...prev, cep }));
-    if (cep.length === 8) {
-      buscarCEP(cep);
+    const formatted = formatCEP(e.target.value);
+    const digits = sanitizeDigits(formatted);
+    setFormData(prev => ({ ...prev, cep: formatted }));
+    if (digits.length === 8) {
+      buscarCEP(digits);
     }
   };
 
@@ -95,13 +131,19 @@ export default function SetupEmpresaPage() {
     setError(null);
 
     try {
-      const url = empresaExistente ? `/api/empresa/${empresaExistente.id}` : '/api/empresa';
+      const url = '/api/empresa';
       const method = empresaExistente ? 'PUT' : 'POST';
+      const payload = {
+        ...formData,
+        cnpj: formData.cnpj ? sanitizeDigits(formData.cnpj) : null,
+        telefone: formData.telefone ? sanitizeDigits(formData.telefone) : null,
+        cep: formData.cep ? sanitizeDigits(formData.cep) : null,
+      };
 
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();

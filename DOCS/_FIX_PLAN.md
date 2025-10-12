@@ -40,3 +40,11 @@ Este plano consolida os problemas críticos identificados na aplicação e na do
 - **Template de PDF e numeração de pedidos:** o layout atual é definitivo? A sequência `numeroPedido` é global ou por empresa?
 - **Helpers de autenticação:** padronizamos tudo em `app/lib/auth.ts` ou reintroduzimos um `verifyAuth` separado? Há cenários onde um helper simplificado faz sentido?
 - **Endpoints “quick-create”:** permanecem como atalhos? Se sim, qual fluxo deve alimentar o `empresaId` e quais validações mínimas são aceitáveis?
+
+## Achados recentes (2025-??-??)
+
+- `app/api/auth/me/route.ts:2` e `app/api/organizacoes/route.ts:3` continuam importando `@/app/lib/verifyAuth`, arquivo inexistente, derrubando build/runtime; `DOCS/CORREÇÕES_IMPLEMENTADAS.md:27-32` e `README.md:48-55` afirmam que autenticação e APIs estão “corrigidas”, então a documentação precisa refletir o bloqueio enquanto o helper não for recriado ou substituído por `app/lib/auth.ts`.
+- `DOCS/CORREÇÕES_IMPLEMENTADAS.md:15` registra a remoção de `Pedido.validadeOrcamento`, porém o campo segue em `prisma/schema.prisma:256` e é usado por endpoints como `app/api/pedidos/[id]/pdf/route.ts:53-79`. Ajustar docs ou remover o campo/migração conforme a decisão do item 2.
+- `app/api/auth/signup/route.ts:40-67` ainda referencia `Organizacao.adminId`, coluna ausente no schema atual (`prisma/schema.prisma:97-108`), impedindo o cadastro; esse gap não aparece em nenhuma documentação.
+- `DOCS/FUNCIONALIDADES_E_PROBLEMAS.md:14-21` lista clonagem/PDF na página de vendas, mas `app/(dashboard)/vendas/page.tsx:69-133` só renderiza tabela estática sem ações – alinhar release notes com a UI entregue ou completar a funcionalidade.
+- `DOCS/INSTALACAO.md:81-88` garante login e métricas no dashboard, porém o fluxo quebra pelos pontos acima e o dashboard segue com cards estáticos (`app/(dashboard)/page.tsx:31-57`). Documentar os blockers até que as correções sejam aplicadas.

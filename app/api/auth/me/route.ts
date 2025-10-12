@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/app/lib/verifyAuth';
+import { withAuth } from '@/app/lib/auth';
+import { prisma } from '@/app/lib/prisma';
 
-export const GET = withAuth(async (req: NextRequest, context) => {
+export const GET = withAuth(async (_req: NextRequest, context) => {
   try {
     const usuario = await prisma.usuario.findUnique({
       where: { id: context.userId },
@@ -58,4 +59,3 @@ export const GET = withAuth(async (req: NextRequest, context) => {
     );
   }
 });
-
