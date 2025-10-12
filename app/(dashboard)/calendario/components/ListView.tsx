@@ -39,11 +39,9 @@ const ListView: React.FC<ListViewProps> = ({ events, onEdit, onDelete, onClone }
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-700">{event.user.nome}</span>
                 {event.stage && (
-                  {event.stage && (
                   <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                     {event.stage.nome}
                   </span>
-                )}
                 )}
                 <div className="relative">
                   <button onClick={() => toggleMenu(event.id)} className="p-1 rounded-full hover:bg-gray-200">
