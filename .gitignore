@@ -1,8 +1,34 @@
-# Ignora a pasta de dependências do Node.js
-node_modules
+# Node dependencies
+node_modules/
 
-# Ignora a pasta de build do Next.js
-.next
+# Next.js build output
+.next/
+out/
 
-# Ignora arquivos de ambiente
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor directories
+.vscode/
+.idea/
+
+# Environment files (keep templates versioned manually if needed)
 .env
+.env.local
+.env.development
+.env.production
+
+# Prisma generated client cache
+prisma/.env
+prisma/migrations/*.lock
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+coverage/
