@@ -151,7 +151,7 @@ export default function CalendarioPage() {
     } catch (err) { setError(err instanceof Error ? err.message : 'Erro ao clonar'); }
   };
 
-  if (isLoading) return <div className="p-6">Carregando...</div>;
+  if (loading) return <div className="p-6">Carregando...</div>;
   if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
