@@ -44,6 +44,10 @@ export default function Header({
   const [isDropdownOpen, setDropdownOpen] = useState(false);
   const [notificacoes, setNotificacoes] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [usuarioAtual, setUsuarioAtual] = useState<Usuario | null>(usuario ?? null);
+  const [organizacaoAtual, setOrganizacaoAtual] = useState<Organizacao | undefined>(organizacao);
+  const [empresaAtual, setEmpresaAtual] = useState<string | null>(empresaSelecionada ?? usuario?.id ?? null);
+  const [carregandoUsuario, setCarregandoUsuario] = useState<boolean>(false);
 
   const handleLogout = async () => {
     try {
@@ -59,6 +63,57 @@ export default function Header({
     // TODO: Implementar busca de notificações
     setNotificacoes(3);
   }, []);
+
+  useEffect(() => {
+    setUsuarioAtual(usuario ?? null);
+  }, [usuario]);
+
+  useEffect(() => {
+    setOrganizacaoAtual(organizacao);
+  }, [organizacao]);
+
+  useEffect(() => {
+    setEmpresaAtual(empresaSelecionada ?? null);
+  }, [empresaSelecionada]);
+
+  useEffect(() => {
+    let cancellado = false;
+    const carregarDados = async () => {
+      setCarregandoUsuario(true);
+      try {
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (cancellado) return;
+        if (!usuarioAtual) {
+          setUsuarioAtual(data.user ?? null);
+        }
+        if (!organizacaoAtual) {
+          setOrganizacaoAtual(data.organizacao);
+        }
+        if ((empresaSelecionada ?? empresaAtual) == null && data.organizacao?.empresas?.length) {
+          const primeiraEmpresa = data.organizacao.empresas[0].id;
+          setEmpresaAtual(primeiraEmpresa);
+          onEmpresaChange?.(primeiraEmpresa);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados do usuário:', error);
+      } finally {
+        if (!cancellado) setCarregandoUsuario(false);
+      }
+    };
+
+    if (!usuarioAtual || !organizacaoAtual) {
+      carregarDados();
+    }
+
+    return () => {
+      cancellado = true;
+    };
+  }, [usuarioAtual, organizacaoAtual, empresaAtual, empresaSelecionada, onEmpresaChange]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -86,11 +141,14 @@ export default function Header({
 
       {/* Seletor de Empresa */}
       <div className="flex-1 flex justify-center max-w-md mx-8">
-        {organizacao && organizacao.empresas.length > 0 && (
+        {organizacaoAtual && organizacaoAtual.empresas.length > 0 && (
           <CompanySelector
-            empresas={organizacao.empresas}
-            empresaSelecionada={empresaSelecionada}
-            onEmpresaChange={onEmpresaChange || (() => {})}
+            empresas={organizacaoAtual.empresas}
+            empresaSelecionada={empresaAtual ?? undefined}
+            onEmpresaChange={(empresaId) => {
+              setEmpresaAtual(empresaId);
+              onEmpresaChange?.(empresaId);
+            }}
           />
         )}
       </div>
@@ -109,10 +167,10 @@ export default function Header({
 
         {/* Informações do usuário */}
         <div className="flex items-center gap-3">
-          {usuario?.fotoPerfil ? (
+          {usuarioAtual?.fotoPerfil ? (
             <img
-              src={usuario.fotoPerfil}
-              alt={usuario.nome}
+              src={usuarioAtual.fotoPerfil}
+              alt={usuarioAtual.nome}
               className="w-8 h-8 rounded-full object-cover"
             />
           ) : (
@@ -120,10 +178,10 @@ export default function Header({
           )}
           <div className="hidden md:block">
             <p className="text-sm font-medium text-gray-800">
-              {usuario?.nome || 'Nome do Usuário'}
+              {carregandoUsuario ? 'Carregando...' : usuarioAtual?.nome ?? usuario?.nome ?? 'Usuário'}
             </p>
             <p className="text-xs text-gray-500">
-              {usuario?.email || 'email@empresa.com'}
+              {usuarioAtual?.email ?? ''}
             </p>
           </div>
         </div>

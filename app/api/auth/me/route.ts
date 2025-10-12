@@ -31,7 +31,8 @@ export const GET = withAuth(async (_req: NextRequest, context) => {
             id: true,
             nome: true,
             cnpj: true,
-            logoUrl: true
+            email: true,
+            telefone: true
           }
         }
       }
