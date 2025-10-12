@@ -104,7 +104,7 @@ export default function ClientForm() {
       </div>
 
       <div className="mt-8 border-t border-gray-200 pt-6 flex items-center justify-end space-x-4">
-        <Button type="button" variant="secondary" onClick={() => router.push('/clientes')}">
+        <Button type="button" variant="secondary" onClick={() => router.push('/clientes')}>
           Cancelar
         </Button>
         <Button type="submit" isLoading={isLoading} disabled={isLoading}>
