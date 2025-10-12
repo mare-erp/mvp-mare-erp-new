@@ -32,7 +32,11 @@ export default function TransacaoModal({ onClose, onSave, editingTransacaoId }: 
     clienteId: '',
     observacoes: '',
   });
-  const { clientes } = useData();
+  const { clientes, fetchClientes } = useData();
+
+  useEffect(() => {
+    fetchClientes();
+  }, [fetchClientes]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 

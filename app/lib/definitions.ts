@@ -16,4 +16,38 @@ export type Cliente = {
     endereco: string | null;
     empresaId: string;
 };
+
+// --- Tipos para o Módulo de Calendário ---
+
+export type KanbanStage = {
+  id: string;
+  nome: string;
+  ordem: number;
+};
+
+export type CalendarUser = {
+  id: string;
+  nome: string;
+};
+
+export type CalendarPedido = {
+  id: string;
+  numeroPedido: number;
+};
+
+export type CalendarEvent = {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  allDay?: boolean;
+  description?: string | null;
+  stageId: string | null;
+  pedidoId: string | null;
+  userId: string;
+  // Relacionamentos aninhados que vêm da API
+  user: { nome: string };
+  stage: { nome: string } | null;
+};
+
  

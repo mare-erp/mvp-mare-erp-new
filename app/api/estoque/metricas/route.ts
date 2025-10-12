@@ -6,67 +6,47 @@ async function getHandler(request: NextRequest, context: AuthContext) {
   try {
     const { empresaId } = context;
 
-    const [totalProdutos, produtosEstoqueBaixo, produtosSemEstoque, valorEstoque] = await Promise.all([
-      prisma.produto.count({
-        where: {
-          empresaId,
-          ativo: true,
-        },
-      }),
-      prisma.produto.count({
-        where: {
-          empresaId,
-          ativo: true,
-          tipo: 'PRODUTO',
-          quantidadeEstoque: {
-            gt: 0,
-            lte: prisma.produto.fields.estoqueMinimo,
-          },
-        },
-      }),
-      prisma.produto.count({
-        where: {
-          empresaId,
-          ativo: true,
-          tipo: 'PRODUTO',
-          quantidadeEstoque: 0,
-        },
-      }),
-      prisma.produto.aggregate({
-        where: {
-          empresaId,
-          ativo: true,
-          tipo: 'PRODUTO',
-        },
-        _sum: {
-          preco: true,
-          custo: true,
-          quantidadeEstoque: true,
-        },
-      }),
-    ]);
+    const totalProdutos = await prisma.produto.count({
+      where: { empresaId, ativo: true },
+    });
 
-    const valorEstoqueCusto = Number(valorEstoque._sum.custo || 0) * Number(valorEstoque._sum.quantidadeEstoque || 0);
-    const valorEstoqueVenda = Number(valorEstoque._sum.preco || 0) * Number(valorEstoque._sum.quantidadeEstoque || 0);
+    const produtosEstoqueBaixoResult: any[] = await prisma.$queryRaw`
+        SELECT COUNT(*)::int
+        FROM "Produto"
+        WHERE "empresaId" = ${empresaId}
+        AND ativo = true
+        AND tipo = 'PRODUTO'
+        AND "quantidadeEstoque" > 0
+        AND "estoqueMinimo" > 0
+        AND "quantidadeEstoque" <= "estoqueMinimo"`;
+
+    const produtosSemEstoque = await prisma.produto.count({
+      where: { empresaId, ativo: true, tipo: 'PRODUTO', quantidadeEstoque: { lte: 0 } },
+    });
+
+    const valorEstoqueCustoResult: any[] = await prisma.$queryRaw`
+      SELECT SUM(custo * "quantidadeEstoque") as total
+      FROM "Produto"
+      WHERE "empresaId" = ${empresaId} AND ativo = true AND tipo = 'PRODUTO'`;
+
+    const valorEstoqueVendaResult: any[] = await prisma.$queryRaw`
+      SELECT SUM(preco * "quantidadeEstoque") as total
+      FROM "Produto"
+      WHERE "empresaId" = ${empresaId} AND ativo = true AND tipo = 'PRODUTO'`;
 
     const metricas = {
       totalProdutos,
-      valorEstoqueCusto,
-      valorEstoqueVenda,
-      produtosEstoqueBaixo,
+      valorEstoqueCusto: Number(valorEstoqueCustoResult[0].total) || 0,
+      valorEstoqueVenda: Number(valorEstoqueVendaResult[0].total) || 0,
+      produtosEstoqueBaixo: produtosEstoqueBaixoResult[0].count || 0,
       produtosSemEstoque,
     };
 
     return NextResponse.json(metricas);
   } catch (error) {
     console.error('Erro ao buscar métricas do estoque:', error);
-    return NextResponse.json(
-      { error: 'Erro interno do servidor' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
 }
 
-export const GET = withAuth(getHandler, {
-  requireCompany: true,
-});
+export const GET = withAuth(getHandler, { requireCompany: true });

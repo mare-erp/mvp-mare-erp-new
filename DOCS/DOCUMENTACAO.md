@@ -241,7 +241,7 @@ Esta seção ajuda a diferenciar o que é essencial para o funcionamento básico
 
 | Rota | Método | Descrição | Autenticação |
 |---|---|---|---|
-
+| `/api/organizacao/current` | `GET` | Retorna a organização do usuário logado e suas empresas. | `withAuth` |
 | `/api/clientes` | `GET`, `POST` | Gerencia o CRUD de clientes. | `withAuth` |
 | `/api/estoque/produtos` | `GET`, `POST` | Gerencia o CRUD de produtos. | `withAuth` |
 | `/api/membros` | `GET`, `POST` | Gerencia os membros da organização. | `withAuth` |

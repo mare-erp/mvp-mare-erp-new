@@ -1,145 +1,40 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, Calendar, CreditCard, AlertCircle, Plus, Edit, Trash2 } from 'lucide-react';
-import TransacaoModal from './components/TransacaoModal'; // Importar o TransacaoModal
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import dynamic from 'next/dynamic';
+import { Plus, Edit, Trash2, TrendingUp, TrendingDown, DollarSign, AlertCircle, RefreshCw } from 'lucide-react';
 import { TipoTransacao, StatusTransacao } from '@prisma/client';
+import StatCard from '@/app/components/ui/StatCard';
 
-interface DashboardData {
-  entradas: {
-    total: number;
-    mes: number;
-    pendentes: number;
-  };
-  saidas: {
-    total: number;
-    mes: number;
-    pendentes: number;
-  };
-  saldo: number;
-  contasVencendo: number;
-  fluxoMensal: Array<{
-    mes: string;
-    entradas: number;
-    saidas: number;
-  }>;
-}
+const TransacaoModal = dynamic(() => import('./components/TransacaoModal'), { ssr: false });
 
-interface Transacao {
-  id: string;
-  descricao: string;
-  valor: number;
-  tipo: TipoTransacao;
-  status: StatusTransacao;
-  dataVencimento: string;
-  dataPagamento?: string | null;
-  clienteId?: string | null;
-  observacoes?: string | null;
-}
-
-const statusOptions: StatusTransacao[] = ['PENDENTE', 'PAGA', 'ATRASADA', 'CANCELADA'];
-const tipoOptions: TipoTransacao[] = ['RECEITA', 'DESPESA'];
-
-const statusColors: Record<StatusTransacao, string> = { PENDENTE: 'bg-yellow-100 text-yellow-800', PAGA: 'bg-green-100 text-green-800', ATRASADA: 'bg-red-100 text-red-800', CANCELADA: 'bg-gray-100 text-gray-800' };
-const tipoColors: Record<TipoTransacao, string> = { RECEITA: 'text-green-600', DESPESA: 'text-red-600' };
-
-interface StatCardProps {
-  icon: React.ElementType;
-  title: string;
-  value: string;
-  subtext: string;
-}
-
-const StatCard = ({ icon: Icon, title, value, subtext }: StatCardProps) => (
-  <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm flex items-center space-x-4">
-    <div className="flex-shrink-0">
-      <Icon className="w-8 h-8 text-[#0A2F5B]" />
-    </div>
-    <div>
-      <p className="text-sm font-medium text-gray-500">{title}</p>
-      <p className="text-2xl font-semibold text-gray-900">{value}</p>
-      <p className="text-xs text-gray-400">{subtext}</p>
-    </div>
-  </div>
-);
-
-// Componente para o Skeleton da página
-const FinanceiroSkeleton = () => {
-  const SkeletonCard = () => (
-    <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm animate-pulse">
-      <div className="h-4 bg-gray-200 rounded w-1/3 mb-4"></div>
-      <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
-      <div className="h-3 bg-gray-200 rounded w-1/4"></div>
-    </div>
-  );
-
-  const SkeletonRow = () => (
-    <tr className="animate-pulse">
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="h-4 bg-gray-200 rounded w-20"></div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="h-6 bg-gray-200 rounded-full w-24"></div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap">
-        <div className="h-4 bg-gray-200 rounded w-24"></div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-right">
-        <div className="flex justify-end space-x-2">
-          <div className="h-8 w-8 bg-gray-200 rounded"></div>
-          <div className="h-8 w-8 bg-gray-200 rounded"></div>
-        </div>
-      </td>
-    </tr>
-  );
-
-  return (
-    <div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonCard />
-        <SkeletonCard />
-      </div>
-      {/* Adicione aqui o esqueleto da tabela se desejar */}
-    </div>
-  );
-};
+// --- Tipagens ---
+interface Transacao { id: string; descricao: string; valor: number; tipo: TipoTransacao; status: StatusTransacao; dataVencimento: string; }
+interface FinanceiroSummary { aReceber: number; aPagar: number; saldoMes: number; contasVencendo: number; }
+type FinanceiroFiltro = 'todos' | 'a-receber' | 'a-pagar' | 'vencendo';
 
 export default function FinanceiroPage() {
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
+  const [summary, setSummary] = useState<FinanceiroSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTransacaoModal, setShowTransacaoModal] = useState(false);
   const [editingTransacaoId, setEditingTransacaoId] = useState<string | null>(null);
-  const [filtroTipo, setFiltroTipo] = useState('');
-  const [filtroStatus, setFiltroStatus] = useState('');
+  const [filtro, setFiltro] = useState<FinanceiroFiltro>('todos');
 
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
-
-      const dashboardUrl = '/api/financeiro/dashboard-data';
-      
-      const transacoesParams = new URLSearchParams();
-      if (filtroTipo) transacoesParams.append('tipo', filtroTipo);
-      if (filtroStatus) transacoesParams.append('status', filtroStatus);
-      const transacoesUrl = `/api/financeiro/transacoes?${transacoesParams.toString()}`;
-
-      const [dashboardRes, transacoesRes] = await Promise.all([
-        fetch(dashboardUrl),
-        fetch(transacoesUrl)
+      const [summaryRes, transacoesRes] = await Promise.all([
+        fetch('/api/financeiro/summary'),
+        fetch('/api/financeiro/transacoes')
       ]);
 
-      if (dashboardRes.ok && transacoesRes.ok) {
-        const dashboardData = await dashboardRes.json();
+      if (summaryRes.ok && transacoesRes.ok) {
+        const summaryData = await summaryRes.json();
         const transacoesData = await transacoesRes.json();
-        setDashboardData(dashboardData);
-        setTransacoes(transacoesData.transacoes); // Corrigido para pegar o array de transações
+        setSummary(summaryData);
+        setTransacoes(transacoesData.transacoes);
       } else {
         setError('Erro ao carregar dados financeiros');
       }
@@ -148,23 +43,28 @@ export default function FinanceiroPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [filtroTipo, filtroStatus]);
+  }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const handleResetFilters = () => {
+    setFiltro('todos');
   };
 
-  const formatDate = (dateString: string) => {
-    return new Intl.DateTimeFormat('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    }).format(new Date(dateString));
-  };
+  const filteredTransacoes = useMemo(() => {
+    if (filtro === 'todos') return transacoes;
+    if (filtro === 'a-receber') return transacoes.filter(t => t.tipo === 'RECEITA' && t.status === 'PENDENTE');
+    if (filtro === 'a-pagar') return transacoes.filter(t => t.tipo === 'DESPESA' && t.status === 'PENDENTE');
+    if (filtro === 'vencendo') {
+        const hoje = new Date();
+        const proximaSemana = new Date(hoje.getTime() + 7 * 24 * 60 * 60 * 1000);
+        return transacoes.filter(t => t.status === 'PENDENTE' && new Date(t.dataVencimento) >= hoje && new Date(t.dataVencimento) <= proximaSemana);
+    }
+    return transacoes;
+  }, [transacoes, filtro]);
+
+  const formatCurrency = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('pt-BR');
 
   const handleAddTransacao = () => {
     setEditingTransacaoId(null);
@@ -176,147 +76,65 @@ export default function FinanceiroPage() {
     setShowTransacaoModal(true);
   };
 
-  const handleDeleteTransacao = (transacaoId: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta transação?')) return;
-
-    fetch(`/api/financeiro/transacoes/${transacaoId}`, {
-      method: 'DELETE',
-    })
-    .then(response => {
-      if (response.ok) {
-        fetchData(); // Recarregar dados
-      } else {
-        alert('Erro ao excluir transação.');
-      }
-    })
-    .catch(err => {
-      console.error('Erro ao excluir transação:', err);
-      alert('Erro ao excluir transação.');
-    });
+  const handleDeleteTransacao = async (transacaoId: string) => {
+    if (!confirm('Tem certeza?')) return;
+    try {
+      const response = await fetch(`/api/financeiro/transacoes/${transacaoId}`, { method: 'DELETE' });
+      if (response.ok) fetchData();
+      else setError('Erro ao excluir transação.');
+    } catch (err) {
+      setError('Erro ao excluir transação.');
+    }
   };
 
-  if (isLoading) {
-    return <FinanceiroSkeleton />;
-  }
-
-  if (error) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-red-500">{error}</div>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="p-6">Carregando...</div>;
+  if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
-    <div>
-      {showTransacaoModal && (
-        <TransacaoModal
-          onClose={() => setShowTransacaoModal(false)}
-          onSave={fetchData}
-          editingTransacaoId={editingTransacaoId}
-        />
-      )}
+    <div className="space-y-6">
+      {showTransacaoModal && <TransacaoModal onClose={() => setShowTransacaoModal(false)} onSave={fetchData} editingTransacaoId={editingTransacaoId} />}
 
-      {/* Header e Cards de Resumo */}
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">Visão Financeira</h1>
-            <p className="text-gray-500">Resumo das suas atividades financeiras.</p>
-          </div>
-          <button
-            onClick={handleAddTransacao}
-            className="bg-[#0A2F5B] text-white px-4 py-2 rounded-lg hover:bg-[#00BFA5] transition-colors flex items-center shadow-sm"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Nova Transação
-          </button>
+      <div className="bg-white p-4 rounded-lg border shadow-sm">
+        <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-bold text-gray-800">Financeiro</h1>
+            <div className="flex items-center gap-2">
+                <button onClick={handleResetFilters} className="btn-secondary p-2" title="Limpar Filtros"><RefreshCw className="w-4 h-4" /></button>
+                <button onClick={handleAddTransacao} className="btn-primary inline-flex items-center gap-2">
+                    <Plus className="w-5 h-5" /><span>Nova Transação</span>
+                </button>
+            </div>
         </div>
-        {dashboardData && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard icon={TrendingUp} title="Entradas do Mês" value={formatCurrency(dashboardData.entradas.mes)} subtext={`${formatCurrency(dashboardData.entradas.pendentes)} pendente`} />
-            <StatCard icon={TrendingDown} title="Saídas do Mês" value={formatCurrency(dashboardData.saidas.mes)} subtext={`${formatCurrency(dashboardData.saidas.pendentes)} pendente`} />
-            <StatCard icon={DollarSign} title="Saldo do Mês" value={formatCurrency(dashboardData.saldo)} subtext="Entradas - Saídas" />
-            <StatCard icon={AlertCircle} title="Contas Vencendo" value={dashboardData.contasVencendo.toString()} subtext="Nos próximos 7 dias" />
-          </div>
-        )}
       </div>
 
-      {/* Filtros e Tabela de Transações */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row items-center gap-4">
-          <h3 className="text-lg font-semibold text-gray-700 flex-shrink-0">Últimas Transações</h3>
-          <div className="flex-grow w-full sm:w-auto grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <select
-              value={filtroTipo}
-              onChange={(e) => setFiltroTipo(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0A2F5B] focus:border-transparent text-sm"
-            >
-              <option value="">Todos os Tipos</option>
-              {tipoOptions.map(tipo => <option key={tipo} value={tipo}>{tipo === 'RECEITA' ? 'Receita' : 'Despesa'}</option>)}
-            </select>
-            <select
-              value={filtroStatus}
-              onChange={(e) => setFiltroStatus(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0A2F5B] focus:border-transparent text-sm"
-            >
-              <option value="">Todos os Status</option>
-              {statusOptions.map(status => <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}</option>)}
-            </select>
-          </div>
+      {summary && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard title="A Receber" value={formatCurrency(summary.aReceber)} icon={<TrendingUp />} color="green" onClick={() => setFiltro('a-receber')} isActive={filtro === 'a-receber'} />
+          <StatCard title="A Pagar" value={formatCurrency(summary.aPagar)} icon={<TrendingDown />} color="red" onClick={() => setFiltro('a-pagar')} isActive={filtro === 'a-pagar'} />
+          <StatCard title="Saldo do Mês" value={formatCurrency(summary.saldoMes)} icon={<DollarSign />} color="blue" />
+          <StatCard title="Vencendo em 7 dias" value={summary.contasVencendo.toString()} icon={<AlertCircle />} color="yellow" onClick={() => setFiltro('vencendo')} isActive={filtro === 'vencendo'} />
+        </div>
+      )}
+
+      <div className="bg-white rounded-lg border shadow-sm">
+        <div className="p-6 border-b flex justify-between items-center">
+          <h2 className="text-lg font-semibold">Transações</h2>
+          <span className="text-sm text-gray-500">{filteredTransacoes.length} transações exibidas</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left text-gray-500">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3">Descrição</th>
-                <th scope="col" className="px-6 py-3">Valor</th>
-                <th scope="col" className="px-6 py-3">Status</th>
-                <th scope="col" className="px-6 py-3">Vencimento</th>
-                <th scope="col" className="px-6 py-3 text-right">Ações</th>
-              </tr>
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr><th className="th-style">Descrição</th><th className="th-style">Valor</th><th className="th-style">Status</th><th className="th-style">Vencimento</th><th className="th-style text-right">Ações</th></tr>
             </thead>
-            <tbody>
-              {transacoes.length > 0 ? (
-                transacoes.map((transacao) => (
-                  <tr key={transacao.id} className="bg-white border-b hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium text-gray-900">
-                      {transacao.descricao}
-                    </td>
-                    <td className={`px-6 py-4 ${tipoColors[transacao.tipo]}`}>
-                      {formatCurrency(transacao.valor)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[transacao.status]}`}>
-                        {transacao.status.charAt(0).toUpperCase() + transacao.status.slice(1).toLowerCase()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      {formatDate(transacao.dataVencimento)}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => handleEditTransacao(transacao.id)}
-                        className="text-[#0A2F5B] hover:text-[#00BFA5] mr-3"
-                      >
-                        <Edit className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTransacao(transacao.id)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
-                    Nenhuma transação encontrada.
-                  </td>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredTransacoes.length > 0 ? filteredTransacoes.map((transacao) => (
+                <tr key={transacao.id} className="hover:bg-gray-50">
+                  <td className="td-style font-medium">{transacao.descricao}</td>
+                  <td className={`td-style font-mono ${transacao.tipo === 'RECEITA' ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(transacao.valor)}</td>
+                  <td className="td-style text-center"><span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${{'PENDENTE':'bg-yellow-100 text-yellow-800','PAGA':'bg-green-100 text-green-800','ATRASADA':'bg-red-100 text-red-800','CANCELADA':'bg-gray-100 text-gray-800'}[transacao.status]}`}>{transacao.status}</span></td>
+                  <td className="td-style">{formatDate(transacao.dataVencimento)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right"><div className="flex items-center space-x-2 justify-end"><button onClick={() => handleEditTransacao(transacao.id)} className="p-1 text-blue-600 hover:text-blue-800" title="Editar"><Edit className="w-4 h-4" /></button><button onClick={() => handleDeleteTransacao(transacao.id)} className="p-1 text-red-600 hover:text-red-800" title="Excluir"><Trash2 className="w-4 h-4" /></button></div></td>
                 </tr>
-              )}
+              )) : (<tr><td colSpan={5} className="px-6 py-4 text-center text-gray-500">Nenhuma transação encontrada.</td></tr>)}
             </tbody>
           </table>
         </div>

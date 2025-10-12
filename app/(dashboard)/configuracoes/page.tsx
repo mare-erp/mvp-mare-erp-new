@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Building2, Users, User, FileText, Settings, Plus } from 'lucide-react';
+import { Building2, Users, User, FileText, Settings, Plus, Trash2 } from 'lucide-react';
+import { Role } from '@prisma/client';
 
 type Tab = 'empresa' | 'equipe' | 'conta' | 'logs' | 'sistema' | 'organizacao';
 
@@ -20,7 +21,7 @@ export default function ConfiguracoesPage() {
   const tabs = [
     { id: 'organizacao' as Tab, name: 'Organização', icon: Plus },
     { id: 'empresa' as Tab, name: 'Empresa', icon: Building2 },
-    { id: 'equipe' as Tab, name: 'Equipe', icon: Users },
+    { id: 'equipe' as Tab, name: 'Membros', icon: Users }, // Nome da aba alterado
     { id: 'conta' as Tab, name: 'Conta', icon: User },
     { id: 'logs' as Tab, name: 'Logs', icon: FileText },
     { id: 'sistema' as Tab, name: 'Sistema', icon: Settings },
@@ -481,10 +482,171 @@ function EmpresaTab() {
 }
 
 function EquipeTab() {
+  // Tipagem para os membros da equipe que serão listados
+  interface Membro {
+    id: string;
+    role: Role;
+    usuario: {
+      nome: string;
+      email: string;
+    };
+  }
+
+  // Estados para gerenciar a UI
+  const [membros, setMembros] = useState<Membro[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [feedback, setFeedback] = useState({ message: '', type: '' });
+
+  // Estado para o formulário de convite
+  const [novoMembro, setNovoMembro] = useState({ nome: '', email: '', role: 'OPERADOR', senha: '' });
+  
+  // Estado para controlar o modal de confirmação de exclusão
+  const [membroParaDeletar, setMembroParaDeletar] = useState<Membro | null>(null);
+
+  // Função para buscar a lista de membros da API
+  const fetchMembros = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/configuracoes/membros');
+      if (!response.ok) throw new Error('Falha ao carregar a equipe. Tente recarregar a página.');
+      const data = await response.json();
+      setMembros(data);
+    } catch (err) {
+      setFeedback({ message: (err as Error).message, type: 'error' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Busca os membros assim que a página é carregada
+  useEffect(() => {
+    fetchMembros();
+  }, []);
+
+  // Manipulador para atualizar o estado do formulário
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setNovoMembro(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Manipulador para enviar o convite de um novo membro
+  const handleInviteSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setFeedback({ message: '', type: '' });
+    try {
+      const response = await fetch('/api/configuracoes/membros', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(novoMembro),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Falha ao convidar membro.');
+      
+      setMembros(prev => [...prev, data]);
+      setNovoMembro({ nome: '', email: '', role: 'OPERADOR', senha: '' });
+      setFeedback({ message: `Usuário ${data.usuario.nome} convidado com sucesso!`, type: 'success' });
+
+    } catch (err) {
+      setFeedback({ message: (err as Error).message, type: 'error' });
+    }
+  };
+
+  // Manipulador para deletar um membro
+  const handleDeleteMember = async () => {
+    if (!membroParaDeletar) return;
+
+    try {
+      const response = await fetch(`/api/configuracoes/membros/${membroParaDeletar.id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.message || 'Falha ao remover membro.'); }
+
+      setMembros(prev => prev.filter(m => m.id !== membroParaDeletar.id));
+      setFeedback({ message: 'Membro removido com sucesso!', type: 'success' });
+    } catch (err) {
+      setFeedback({ message: (err as Error).message, type: 'error' });
+    } finally {
+      setMembroParaDeletar(null);
+    }
+  };
+
   return (
     <div>
-      <h3 className="text-lg font-medium text-gray-900 mb-4">Gerenciamento de Equipe</h3>
-      <p className="text-gray-600">Funcionalidade de gerenciamento de equipe será implementada aqui.</p>
+      <h3 className="text-lg font-medium text-gray-900">Gerenciar Membros</h3>
+      <p className="mt-1 text-sm text-gray-600">Convide novos membros e gerencie as permissões de acesso da sua organização.</p>
+
+      <div className="mt-8 bg-gray-50 p-6 rounded-lg border">
+        <h2 className="text-md font-semibold">Convidar Novo Membro</h2>
+        <form onSubmit={handleInviteSubmit} className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+          <div className="lg:col-span-1">
+            <label htmlFor="nome" className="text-sm font-medium">Nome</label>
+            <input type="text" name="nome" id="nome" value={novoMembro.nome} onChange={handleInputChange} required className="mt-1 block w-full input-style" />
+          </div>
+          <div className="lg:col-span-1">
+            <label htmlFor="email" className="text-sm font-medium">E-mail</label>
+            <input type="email" name="email" id="email" value={novoMembro.email} onChange={handleInputChange} required className="mt-1 block w-full input-style" />
+          </div>
+          <div className="lg:col-span-1">
+            <label htmlFor="senha" className="text-sm font-medium">Senha (opcional)</label>
+            <input type="password" name="senha" id="senha" value={novoMembro.senha} onChange={handleInputChange} className="mt-1 block w-full input-style" />
+          </div>
+          <div className="lg:col-span-1">
+            <label htmlFor="role" className="text-sm font-medium">Permissão</label>
+            <select name="role" id="role" value={novoMembro.role} onChange={handleInputChange} className="mt-1 block w-full input-style">
+              <option value="GESTOR">Gestor</option>
+              <option value="OPERADOR">Operador</option>
+              <option value="VISUALIZADOR">Visualizador</option>
+            </select>
+          </div>
+          <button type="submit" className="lg:col-span-1 btn-primary">Convidar</button>
+        </form>
+      </div>
+      
+      {feedback.message && (
+        <div className={`mt-4 p-4 rounded-md ${feedback.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+          {feedback.message}
+        </div>
+      )}
+
+      <div className="mt-8 flow-root">
+        {isLoading ? (
+          <p>Carregando membros...</p>
+        ) : (
+          <ul role="list" className="divide-y divide-gray-200">
+            {membros.length > 0 ? membros.map((membro) => (
+              <li key={membro.id} className="py-4 flex justify-between items-center">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{membro.usuario.nome}</p>
+                  <p className="text-sm text-gray-500">{membro.usuario.email}</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800`}>
+                    {membro.role}
+                  </span>
+                  <button onClick={() => setMembroParaDeletar(membro)} className="text-red-500 hover:text-red-700" title="Remover membro">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </li>
+            )) : (
+              <p className="text-sm text-gray-500 text-center py-4">Nenhum membro na equipe ainda.</p>
+            )}
+          </ul>
+        )}
+      </div>
+
+      {membroParaDeletar && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center" onClick={() => setMembroParaDeletar(null)}>
+          <div className="bg-white p-6 rounded-lg shadow-xl z-50 max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold">Confirmar Exclusão</h3>
+            <p className="mt-2 text-sm text-gray-600">Você tem certeza que deseja remover <strong>{membroParaDeletar.usuario.nome}</strong> da equipe?</p>
+            <div className="mt-6 flex justify-end gap-4">
+              <button onClick={() => setMembroParaDeletar(null)} className="btn-secondary">Cancelar</button>
+              <button onClick={handleDeleteMember} className="btn-danger">Sim, Remover</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

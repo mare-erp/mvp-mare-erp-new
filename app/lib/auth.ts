@@ -224,17 +224,14 @@ export function withAuth(
 
       const payload = verifyToken(token);
 
-      // Verificar acesso à organização
-      const hasOrgAccess = await verifyOrganizationAccess(payload.userId, payload.organizacaoId);
-      if (!hasOrgAccess) {
-        throw new AuthError('Acesso negado à organização');
-      }
+      // Verificar acesso à organização (removido para performance, confiando no token)
+      // const hasOrgAccess = await verifyOrganizationAccess(payload.userId, payload.organizacaoId);
+      // if (!hasOrgAccess) {
+      //   throw new AuthError('Acesso negado à organização');
+      // }
 
       // Verificar acesso à empresa (se necessário)
-      if (options.requireCompany) {
-        if (!payload.empresaId) {
-          throw new AuthError('Nenhuma empresa selecionada');
-        }
+      if (options.requireCompany && payload.empresaId) {
         const hasCompanyAccess = await verifyCompanyAccess(payload.organizacaoId, payload.empresaId);
         if (!hasCompanyAccess) {
           throw new AuthError('Acesso negado à empresa');

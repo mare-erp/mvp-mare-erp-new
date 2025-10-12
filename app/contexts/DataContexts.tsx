@@ -1,18 +1,20 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 
-// Tipagem para os dados que vamos compartilhar
+// Tipagem para os dados
 interface Cliente { id: string; nome: string; }
 interface Produto { id: string; nome: string; preco: number; tipo: string; }
 interface Membro { id: string; usuario: { nome: string }; usuarioId: string; }
 
+// Tipagem do Contexto
 interface DataContextType {
   clientes: Cliente[];
   produtos: Produto[];
   membros: Membro[];
-  isLoading: boolean;
-  refetchClientes: () => void;
+  fetchClientes: () => Promise<void>;
+  fetchProdutos: () => Promise<void>;
+  fetchMembros: () => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -29,7 +31,6 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [membros, setMembros] = useState<Membro[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   const fetchClientes = useCallback(async () => {
     try {
@@ -42,14 +43,18 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const fetchProdutos = useCallback(async () => {
-    // NOTA: Esta API ainda não existe. Retornará um array vazio por enquanto.
-    // Vamos criá-la no módulo de Estoque.
-    setProdutos([]);
+    try {
+      const res = await fetch('/api/produtos');
+      if (res.ok) {
+        const data = await res.json();
+        setProdutos(data);
+      }
+    } catch (error) { console.error("Falha ao buscar produtos:", error); }
   }, []);
 
   const fetchMembros = useCallback(async () => {
     try {
-      const res = await fetch('/api/membros');
+      const res = await fetch('/api/configuracoes/membros');
        if (res.ok) {
         const data = await res.json();
         setMembros(data);
@@ -57,25 +62,13 @@ export const DataProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) { console.error("Falha ao buscar membros:", error); }
   }, []);
 
-  useEffect(() => {
-    const fetchAllData = async () => {
-      setIsLoading(true);
-      await Promise.all([
-        fetchClientes(),
-        fetchProdutos(),
-        fetchMembros()
-      ]);
-      setIsLoading(false);
-    };
-    fetchAllData();
-  }, [fetchClientes, fetchProdutos, fetchMembros]);
-
   const value = {
     clientes,
     produtos,
     membros,
-    isLoading,
-    refetchClientes: fetchClientes,
+    fetchClientes,
+    fetchProdutos,
+    fetchMembros,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

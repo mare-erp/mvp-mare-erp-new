@@ -7,6 +7,7 @@ import {
   Wallet,
   Archive,
   Cog,
+  CalendarDays, // Ícone adicionado
 } from 'lucide-react';
 
 // Definindo o tipo para cada link para garantir consistência
@@ -22,6 +23,11 @@ export const mainLinks: NavLink[] = [
     name: 'Dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
+  },
+  {
+    name: 'Calendário',
+    href: '/calendario',
+    icon: CalendarDays, // Novo link
   },
   {
     name: 'Vendas',

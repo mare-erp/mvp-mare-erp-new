@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import { DataProvider } from '@/app/contexts/DataContexts';
+import ErrorBoundary from '@/app/components/ErrorBoundary';
 
 export default function DashboardLayout({
   children,
@@ -31,7 +32,7 @@ export default function DashboardLayout({
         >
           <Header />
           <main className="p-8 pt-28">
-            {children}
+            <ErrorBoundary>{children}</ErrorBoundary>
           </main>
         </div>
       </div>

@@ -1,276 +1,116 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { PlusCircle, Search, Edit, Trash2, MoreVertical } from 'lucide-react';
-import { TipoPessoa } from '@prisma/client';
+import { PlusCircle, Search, Users, UserPlus, UserCheck, UserX, RefreshCw } from 'lucide-react';
+import StatCard from '@/app/components/ui/StatCard';
 
-interface Cliente {
-  id: string;
-  nome: string;
-  tipoPessoa: TipoPessoa;
-  cpfCnpj: string | null;
-  email: string | null;
-  telefone: string | null;
-  cidade: string | null;
-  uf: string | null;
-  ativo: boolean;
-  createdAt: string;
-}
+// --- Tipagens ---
+interface Cliente { id: string; nome: string; email: string | null; telefone: string | null; cidade: string | null; uf: string | null; ativo: boolean; }
+interface ClientesSummary { total: number; novos: number; ativos: number; inativos: number; }
+type ClientesFiltro = 'todos' | 'ativos' | 'inativos';
 
 export default function ClientesPage() {
   const router = useRouter();
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [summary, setSummary] = useState<ClientesSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
+  const [filtro, setFiltro] = useState<ClientesFiltro>('todos');
 
-  const fetchClientes = async () => {
+  const fetchData = async () => {
     try {
       setIsLoading(true);
-      setError(null);
-      const response = await fetch('/api/clientes');
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Falha ao carregar clientes.');
-      }
-      const data = await response.json();
-      setClientes(data);
+      const [clientesRes, summaryRes] = await Promise.all([
+        fetch('/api/clientes'),
+        fetch('/api/clientes/summary'),
+      ]);
+      if (!clientesRes.ok || !summaryRes.ok) throw new Error('Falha ao carregar dados dos clientes.');
+      const clientesData = await clientesRes.json();
+      const summaryData = await summaryRes.json();
+      setClientes(clientesData);
+      setSummary(summaryData);
     } catch (err) {
-      console.error('Erro ao buscar clientes:', err);
       setError((err as Error).message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchClientes();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
-  const filteredClientes = clientes.filter(cliente =>
-    cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (cliente.cpfCnpj && cliente.cpfCnpj.includes(searchTerm)) ||
-    (cliente.email && cliente.email.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  const formatarTipoPessoa = (tipo: TipoPessoa) => {
-    return tipo === TipoPessoa.FISICA ? 'Pessoa Física' : 'Pessoa Jurídica';
+  const handleResetFilters = () => {
+    setFiltro('todos');
+    setSearchTerm('');
   };
 
-  const formatarCpfCnpj = (cpfCnpj: string | null) => {
-    if (!cpfCnpj) return '-';
-    if (cpfCnpj.length === 11) {
-      return cpfCnpj.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-    } else if (cpfCnpj.length === 14) {
-      return cpfCnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+  const filteredClientes = useMemo(() => {
+    let items = clientes;
+    if (filtro === 'ativos') items = items.filter(c => c.ativo);
+    if (filtro === 'inativos') items = items.filter(c => !c.ativo);
+
+    if (searchTerm) {
+      return items.filter(cliente =>
+        cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (cliente.email && cliente.email.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
     }
-    return cpfCnpj;
-  };
+    return items;
+  }, [clientes, filtro, searchTerm]);
 
-  const toggleDropdown = (clienteId: string) => {
-    setDropdownOpen(dropdownOpen === clienteId ? null : clienteId);
-  };
-
-  const handleEditCliente = (clienteId: string) => {
-    router.push(`/clientes/${clienteId}/editar`);
-    setDropdownOpen(null);
-  };
-
-  const handleDeleteCliente = async (clienteId: string, nomeCliente: string) => {
-    if (!confirm(`Tem certeza que deseja excluir o cliente "${nomeCliente}"?`)) return;
-
-    try {
-      const response = await fetch(`/api/clientes/${clienteId}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        fetchClientes(); // Recarregar lista
-        setDropdownOpen(null);
-      } else {
-        const errorData = await response.json();
-        alert(errorData.message || 'Erro ao excluir cliente.');
-      }
-    } catch (err) {
-      console.error('Erro ao excluir cliente:', err);
-      alert('Erro ao excluir cliente.');
-    }
-  };
+  if (isLoading) return <div className="p-6">Carregando...</div>;
+  if (error) return <div className="p-6 text-red-500">{error}</div>;
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Clientes</h1>
-          <p className="mt-2 text-gray-600">Gerencie sua base de clientes.</p>
+    <div className="space-y-6">
+      <div className="bg-white p-4 rounded-lg border shadow-sm">
+        <div className="flex justify-between items-center mb-4">
+            <h1 className="text-2xl font-bold text-gray-800">Clientes</h1>
+            <button onClick={() => router.push('/clientes/novo')} className="btn-primary inline-flex items-center gap-2">
+                <PlusCircle className="w-5 h-5" /><span>Novo Cliente</span>
+            </button>
         </div>
-        <button 
-          onClick={() => router.push('/clientes/novo')} 
-          className="btn-primary inline-flex items-center gap-2"
-        >
-          <PlusCircle className="w-5 h-5" />
-          <span>Novo Cliente</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="relative flex-grow">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input type="text" placeholder="Pesquisar por nome ou e-mail..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border rounded-lg" />
+          </div>
+          <button onClick={handleResetFilters} className="btn-secondary p-2" title="Limpar Filtros"><RefreshCw className="w-4 h-4" /></button>
+        </div>
       </div>
 
-      {/* Barra de Pesquisa */}
-      <div className="mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Pesquisar por nome, CPF/CNPJ ou e-mail..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0A2F5B] focus:border-transparent"
-          />
+      {summary && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard title="Total de Clientes" value={summary.total.toString()} icon={<Users />} color="blue" onClick={() => setFiltro('todos')} isActive={filtro === 'todos'} />
+          <StatCard title="Novos no Mês" value={summary.novos.toString()} icon={<UserPlus />} color="purple" />
+          <StatCard title="Clientes Ativos" value={summary.ativos.toString()} icon={<UserCheck />} color="green" onClick={() => setFiltro('ativos')} isActive={filtro === 'ativos'} />
+          <StatCard title="Clientes Inativos" value={summary.inativos.toString()} icon={<UserX />} color="red" onClick={() => setFiltro('inativos')} isActive={filtro === 'inativos'} />
         </div>
-      </div>
+      )}
 
       <div className="bg-white rounded-lg border shadow-sm">
-        {isLoading ? (
-          <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0A2F5B] mx-auto"></div>
-            <p className="mt-2 text-gray-600">Carregando clientes...</p>
-          </div>
-        ) : error ? (
-          <div className="p-8 text-center">
-            <p className="text-red-600 mb-4">{error}</p>
-            <button
-              onClick={fetchClientes}
-              className="bg-[#0A2F5B] text-white px-4 py-2 rounded-lg hover:bg-[#00BFA5] transition-colors"
-            >
-              Tentar Novamente
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="p-4 border-b border-gray-200">
-              <p className="text-sm text-gray-600">
-                {filteredClientes.length} cliente{filteredClientes.length !== 1 ? 's' : ''} encontrado{filteredClientes.length !== 1 ? 's' : ''}
-              </p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CPF / CNPJ</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">E-mail</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telefone</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Localização</th>
-                    <th className="relative px-6 py-3"><span className="sr-only">Ações</span></th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredClientes.length > 0 ? filteredClientes.map((cliente) => (
-                    <tr key={cliente.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-8 w-8">
-                            <div className="h-8 w-8 rounded-full bg-[#0A2F5B] flex items-center justify-center">
-                              <span className="text-sm font-medium text-white">
-                                {cliente.nome.charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{cliente.nome}</div>
-                            <div className="text-sm text-gray-500">
-                              {cliente.ativo ? (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  Ativo
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                  Inativo
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatarTipoPessoa(cliente.tipoPessoa)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatarCpfCnpj(cliente.cpfCnpj)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {cliente.email || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {cliente.telefone || '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {cliente.cidade && cliente.uf ? `${cliente.cidade}, ${cliente.uf}` : '-'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="relative inline-block text-left">
-                          <button 
-                            onClick={() => toggleDropdown(cliente.id)}
-                            className="text-gray-400 hover:text-gray-600 p-1"
-                          >
-                            <MoreVertical className="w-5 h-5" />
-                          </button>
-                          {dropdownOpen === cliente.id && (
-                            <div className="absolute right-0 z-10 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5">
-                              <div className="py-1">
-                                <button
-                                  onClick={() => handleEditCliente(cliente.id)}
-                                  className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                >
-                                  <Edit className="w-4 h-4 mr-2" />
-                                  Editar
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteCliente(cliente.id, cliente.nome)}
-                                  className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Excluir
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center">
-                        <div className="text-gray-500">
-                          {searchTerm ? (
-                            <>
-                              <Search className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                              <p className="text-lg font-medium">Nenhum cliente encontrado</p>
-                              <p className="text-sm">Tente ajustar os termos de pesquisa</p>
-                            </>
-                          ) : (
-                            <>
-                              <PlusCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                              <p className="text-lg font-medium">Nenhum cliente cadastrado</p>
-                              <p className="text-sm mb-4">Comece adicionando seu primeiro cliente</p>
-                              <button
-                                onClick={() => router.push('/clientes/novo')}
-                                className="bg-[#0A2F5B] text-white px-4 py-2 rounded-lg hover:bg-[#00BFA5] transition-colors"
-                              >
-                                Adicionar Cliente
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
+         <div className="p-6 border-b flex justify-between items-center">
+          <h2 className="text-lg font-semibold">Lista de Clientes</h2>
+          <span className="text-sm text-gray-500">{filteredClientes.length} clientes exibidos</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr><th className="th-style">Nome</th><th className="th-style">Contato</th><th className="th-style">Localização</th><th className="th-style text-center">Status</th></tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredClientes.length > 0 ? filteredClientes.map((cliente) => (
+                <tr key={cliente.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => router.push(`/clientes/${cliente.id}/editar`)}>
+                  <td className="td-style font-medium">{cliente.nome}</td>
+                  <td className="td-style">{cliente.email || cliente.telefone || '-'}</td>
+                  <td className="td-style">{cliente.cidade && cliente.uf ? `${cliente.cidade}, ${cliente.uf}` : '-'}</td>
+                  <td className="td-style text-center"><span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cliente.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{cliente.ativo ? 'Ativo' : 'Inativo'}</span></td>
+                </tr>
+              )) : (<tr><td colSpan={4} className="px-6 py-12 text-center text-gray-500">Nenhum cliente encontrado.</td></tr>)}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

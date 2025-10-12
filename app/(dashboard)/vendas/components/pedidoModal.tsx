@@ -25,7 +25,13 @@ interface ItemPedido {
 }
 
 export default function PedidoModal({ onClose, onSave, editingPedidoId }: PedidoModalProps) {
-  const { clientes, produtos, membros, fetchData: refreshContextData } = useData();
+  const { clientes, produtos, membros, fetchClientes, fetchProdutos, fetchMembros } = useData();
+
+  useEffect(() => {
+    fetchClientes();
+    fetchProdutos();
+    fetchMembros();
+  }, [fetchClientes, fetchProdutos, fetchMembros]);
   const [numeroPedido, setNumeroPedido] = useState('');
   const [clienteId, setClienteId] = useState('');
   const [status, setStatus] = useState<StatusPedido>(StatusPedido.ORCAMENTO);
@@ -156,9 +162,8 @@ export default function PedidoModal({ onClose, onSave, editingPedidoId }: Pedido
         setClienteId(novoCliente.id);
         setShowClienteQuickCreate(false);
         setNovoClienteNome('');
-        setNovoClienteCpfCnpj('');
-        refreshContextData(); // Recarregar dados do contexto
-      } else {
+              setNovoClienteCpfCnpj('');
+              fetchClientes(); // Recarregar dados do contexto      } else {
         const errorData = await response.json();
         setFeedback(errorData.message || 'Erro ao criar cliente');
       }
@@ -197,7 +202,7 @@ export default function PedidoModal({ onClose, onSave, editingPedidoId }: Pedido
         setNovoProdutoDescricao('');
         setNovoProdutoPreco('');
         setNovoProdutoTipo(TipoItem.PRODUTO);
-        refreshContextData(); // Recarregar dados do contexto
+        fetchProdutos(); // Recarregar dados do contexto
       } else {
         const errorData = await response.json();
         setFeedback(errorData.message || 'Erro ao criar produto');

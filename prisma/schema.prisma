@@ -102,6 +102,10 @@ model Organizacao {
   updatedAt DateTime @updatedAt
   empresas  Empresa[]
   membros   MembroOrganizacao[]
+  
+  // Relacionamentos adicionados para Calendário e Kanban
+  kanbanStages  KanbanStage[]
+  calendarEvents CalendarEvent[]
 }
 
 model MembroOrganizacao {
@@ -117,6 +121,7 @@ model MembroOrganizacao {
   updatedAt     DateTime        @updatedAt
 
   @@unique([organizacaoId, usuarioId])
+  @@index([usuarioId])
 }
 
 model Empresa {
@@ -148,6 +153,8 @@ model Empresa {
   impostos          Imposto[]
   configuracoes     ConfiguracaoSistema[]
   auditoria         LogAuditoria[]
+
+  @@index([organizacaoId])
 }
 
 model Usuario {
@@ -164,6 +171,9 @@ model Usuario {
   organizacoes      MembroOrganizacao[]
   pedidos           Pedido[]
   auditoria         LogAuditoria[]
+
+  // Relacionamento adicionado para Calendário
+  calendarEvents    CalendarEvent[]
 }
 
 model Cliente {
@@ -190,6 +200,7 @@ model Cliente {
   transacoes               TransacaoFinanceira[]
 
   @@unique([empresaId, cpfCnpj])
+  @@index([empresaId])
 }
 
 model Produto {
@@ -222,6 +233,7 @@ model Produto {
   movimentacoesEstoque MovimentacaoEstoque[]
 
   @@unique([empresaId, sku])
+  @@index([empresaId])
 }
 
 model ComponenteProduto {
@@ -265,16 +277,19 @@ model Pedido {
   usuarioId            String
   usuario              Usuario               @relation(fields: [usuarioId], references: [id])
 
-
-
-  
   itens                ItemPedido[]
   transacoes           TransacaoFinanceira[]
   parcelasPagamento    Parcela[]
   historico            HistoricoPedido[]
   comissoes            Comissao[]
 
+  // Relacionamento adicionado para Calendário
+  calendarEvents       CalendarEvent[]
+
   @@unique([empresaId, numeroPedido])
+  @@index([empresaId, status, dataPedido])
+  @@index([clienteId])
+  @@index([usuarioId])
 }
 
 model ItemPedido {
@@ -287,6 +302,9 @@ model ItemPedido {
   pedido        Pedido  @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
   produtoId     String?
   produto       Produto? @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+
+  @@index([pedidoId])
+  @@index([produtoId])
 }
 
 model HistoricoPedido {
@@ -295,6 +313,8 @@ model HistoricoPedido {
   pedido    Pedido   @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
   data      DateTime @default(now())
   descricao String
+
+  @@index([pedidoId])
 }
 
 model Parcela {
@@ -309,6 +329,9 @@ model Parcela {
   transacao       TransacaoFinanceira? @relation(fields: [transacaoId], references: [id])
   contaPagarReceberId String?
   contaPagarReceber ContaPagarReceber? @relation(fields: [contaPagarReceberId], references: [id], onDelete: Cascade)
+
+  @@index([pedidoId])
+  @@index([contaPagarReceberId])
 }
 
 model TransacaoFinanceira {
@@ -327,11 +350,15 @@ model TransacaoFinanceira {
   pedido          Pedido?          @relation(fields: [pedidoId], references: [id], onDelete: SetNull)
   clienteId       String?
   cliente         Cliente?         @relation(fields: [clienteId], references: [id], onDelete: SetNull)
-  parcela         Parcela?
   contaBancariaId String?
   contaBancaria   ContaBancaria?   @relation(fields: [contaBancariaId], references: [id], onDelete: SetNull)
+  parcela         Parcela?      
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+
+  @@index([empresaId, tipo, status, dataVencimento])
+  @@index([pedidoId])
+  @@index([clienteId])
 }
 
 model ContaPagarReceber {
@@ -346,6 +373,8 @@ model ContaPagarReceber {
   parcelas        Parcela[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+
+  @@index([empresaId])
 }
 
 model ContaBancaria {
@@ -361,6 +390,8 @@ model ContaBancaria {
   transacoes  TransacaoFinanceira[]
   createdAt   DateTime              @default(now())
   updatedAt   DateTime              @updatedAt
+
+  @@index([empresaId])
 }
 
 model FormaPagamento {
@@ -373,6 +404,8 @@ model FormaPagamento {
   empresa     Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([empresaId])
 }
 
 model MovimentacaoEstoque {
@@ -387,6 +420,8 @@ model MovimentacaoEstoque {
   empresa     Empresa                @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   createdAt   DateTime               @default(now())
   updatedAt   DateTime               @updatedAt
+
+  @@index([empresaId, produtoId])
 }
 
 model Imposto {
@@ -399,6 +434,8 @@ model Imposto {
   empresa     Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([empresaId])
 }
 
 model ConfiguracaoSistema {
@@ -424,6 +461,8 @@ model Comissao {
   dataPagamento DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
+  @@index([pedidoId])
 }
 
 model LogAuditoria {
@@ -440,4 +479,56 @@ model LogAuditoria {
   ip          String?
   userAgent   String?
   createdAt   DateTime          @default(now())
+
+  @@index([usuarioId, empresaId])
+}
+
+// --- NOVOS MODELS PARA CALENDÁRIO E KANBAN ---
+
+model KanbanStage {
+  id            String @id @default(cuid())
+  nome          String
+  ordem         Int
+  capacidade    Int      @default(40)
+  
+  organizacaoId String
+  organizacao   Organizacao @relation(fields: [organizacaoId], references: [id], onDelete: Cascade)
+  
+  eventos       CalendarEvent[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([organizacaoId, nome])
+  @@index([organizacaoId, ordem])
+}
+
+model CalendarEvent {
+  id            String      @id @default(cuid())
+  title         String
+  start         DateTime
+  end           DateTime
+  description   String?
+  allDay        Boolean     @default(false)
+  recurrence    PeriodoRecorrencia?
+  
+  organizacaoId String
+  organizacao   Organizacao @relation(fields: [organizacaoId], references: [id], onDelete: Cascade)
+
+  stageId       String?
+  stage         KanbanStage? @relation(fields: [stageId], references: [id], onDelete: SetNull)
+
+  pedidoId      String?
+  pedido        Pedido?     @relation(fields: [pedidoId], references: [id], onDelete: SetNull)
+
+  userId        String
+  user          Usuario     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([organizacaoId, start, end])
+  @@index([stageId])
+  @@index([pedidoId])
+  @@index([userId])
 }
