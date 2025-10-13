@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
-import { withAuth, logAuditoria } from '@/app/lib/verifyAuth';
+import { withAuth, logAuditoria } from '@/app/lib/auth';
 import bcrypt from 'bcryptjs';
 
 // GET - Listar membros da organização
@@ -175,4 +175,3 @@ export const POST = withAuth(
   },
   { requiredPermission: { modulo: 'usuarios', acao: 'criar' } }
 );
-

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
-import { withAuth, logAuditoria } from '@/app/lib/verifyAuth';
+import { withAuth, logAuditoria } from '@/app/lib/auth';
 
 // GET - Listar empresas da organização
 export const GET = withAuth(
@@ -143,4 +143,3 @@ export const POST = withAuth(
   },
   { requiredPermission: { modulo: 'configuracoes', acao: 'empresa' } }
 );
-

@@ -1,16 +1,19 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
-import { verifyAuth } from '@/app/lib/verifyAuth';
+import { verifyAuth } from '@/app/lib/auth';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const authResult = await verifyAuth(request);
+    const authResult = await verifyAuth(request, { requireCompany: true });
     if (!authResult.success) {
-      return NextResponse.json({ error: authResult.error }, { status: 401 });
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status ?? 401 }
+      );
     }
 
     const { empresaId } = authResult;
@@ -56,9 +59,12 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const authResult = await verifyAuth(request);
+    const authResult = await verifyAuth(request, { requireCompany: true });
     if (!authResult.success) {
-      return NextResponse.json({ error: authResult.error }, { status: 401 });
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status ?? 401 }
+      );
     }
 
     const { empresaId } = authResult;
@@ -150,9 +156,12 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const authResult = await verifyAuth(request);
+    const authResult = await verifyAuth(request, { requireCompany: true });
     if (!authResult.success) {
-      return NextResponse.json({ error: authResult.error }, { status: 401 });
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status ?? 401 }
+      );
     }
 
     const { empresaId } = authResult;
@@ -186,4 +195,3 @@ export async function DELETE(
     );
   }
 }
-

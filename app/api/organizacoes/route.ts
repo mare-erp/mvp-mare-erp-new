@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
-import { withAuth, logAuditoria } from '@/app/lib/verifyAuth';
+import { withAuth, logAuditoria } from '@/app/lib/auth';
 
 // GET - Listar organizações do usuário
 export const GET = withAuth(async (req: NextRequest, context) => {
@@ -144,4 +144,3 @@ export const POST = withAuth(async (req: NextRequest, context) => {
     );
   }
 });
-

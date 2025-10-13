@@ -200,61 +200,63 @@ export async function logAuditoria(
   }
 }
 
+export type AuthOptions = {
+  requireCompany?: boolean;
+  requiredPermission?: { modulo: string; acao: string };
+};
+
+async function resolveAuthContext(
+  req: NextRequest,
+  options: AuthOptions = {}
+): Promise<AuthContext> {
+  // Rate limiting
+  checkRateLimit(req);
+
+  // Verificar token
+  const authHeader = req.headers.get('authorization');
+  const cookieToken = req.cookies.get('auth-token')?.value;
+  const token = authHeader?.replace('Bearer ', '') || cookieToken;
+
+  if (!token) {
+    throw new AuthError('Token não fornecido');
+  }
+
+  const payload = verifyToken(token);
+
+  // Verificar acesso à empresa (se necessário)
+  if (options.requireCompany && payload.empresaId) {
+    const hasCompanyAccess = await verifyCompanyAccess(payload.organizacaoId, payload.empresaId);
+    if (!hasCompanyAccess) {
+      throw new AuthError('Acesso negado à empresa');
+    }
+  }
+
+  // Verificar permissões específicas
+  if (options.requiredPermission) {
+    const { modulo, acao } = options.requiredPermission;
+    const allowed = hasPermission(payload.role, payload.permissoes, modulo, acao);
+    if (!allowed) {
+      throw new AuthError('Permissão insuficiente');
+    }
+  }
+
+  return {
+    userId: payload.userId,
+    organizacaoId: payload.organizacaoId,
+    empresaId: payload.empresaId,
+    role: payload.role,
+    permissoes: payload.permissoes
+  };
+}
+
 // Middleware principal para APIs
 export function withAuth(
   handler: (req: NextRequest, context: AuthContext) => Promise<NextResponse>,
-  options: {
-    requireCompany?: boolean;
-    requiredPermission?: { modulo: string; acao: string };
-  } = {}
+  options: AuthOptions = {}
 ) {
   return async (req: NextRequest) => {
     try {
-      // Rate limiting
-      checkRateLimit(req);
-
-      // Verificar token
-      const authHeader = req.headers.get('authorization');
-      const cookieToken = req.cookies.get('auth-token')?.value;
-      const token = authHeader?.replace('Bearer ', '') || cookieToken;
-
-      if (!token) {
-        throw new AuthError('Token não fornecido');
-      }
-
-      const payload = verifyToken(token);
-
-      // Verificar acesso à organização (removido para performance, confiando no token)
-      // const hasOrgAccess = await verifyOrganizationAccess(payload.userId, payload.organizacaoId);
-      // if (!hasOrgAccess) {
-      //   throw new AuthError('Acesso negado à organização');
-      // }
-
-      // Verificar acesso à empresa (se necessário)
-      if (options.requireCompany && payload.empresaId) {
-        const hasCompanyAccess = await verifyCompanyAccess(payload.organizacaoId, payload.empresaId);
-        if (!hasCompanyAccess) {
-          throw new AuthError('Acesso negado à empresa');
-        }
-      }
-
-      // Verificar permissões específicas
-      if (options.requiredPermission) {
-        const { modulo, acao } = options.requiredPermission;
-        const hasPermission = hasPermission(payload.role, payload.permissoes, modulo, acao);
-        if (!hasPermission) {
-          throw new AuthError('Permissão insuficiente');
-        }
-      }
-
-      const context: AuthContext = {
-        userId: payload.userId,
-        organizacaoId: payload.organizacaoId,
-        empresaId: payload.empresaId,
-        role: payload.role,
-        permissoes: payload.permissoes
-      };
-
+      const context = await resolveAuthContext(req, options);
       return await handler(req, context);
 
     } catch (error) {
@@ -281,6 +283,27 @@ export function withAuth(
   };
 }
 
+export async function verifyAuth(
+  req: NextRequest,
+  options: AuthOptions = {}
+) {
+  try {
+    const context = await resolveAuthContext(req, options);
+    return { success: true, ...context };
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return { success: false, error: error.message, status: 429 };
+    }
+
+    if (error instanceof AuthError) {
+      return { success: false, error: error.message, status: error.statusCode };
+    }
+
+    console.error('Erro ao verificar autenticação:', error);
+    return { success: false, error: 'Erro interno do servidor', status: 500 };
+  }
+}
+
 // Função para gerar token JWT
 export function generateToken(payload: TokenPayload): string {
   return jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '24h' });
@@ -293,4 +316,3 @@ export async function updateLastLogin(userId: string): Promise<void> {
     data: { ultimoLogin: new Date() }
   });
 }
-

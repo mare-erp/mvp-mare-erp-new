@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth, logAuditoria } from '@/app/lib/verifyAuth';
+import { withAuth, logAuditoria } from '@/app/lib/auth';
 import { prisma } from '@/app/lib/prisma';
 
 export const POST = withAuth(
@@ -98,7 +98,7 @@ export const POST = withAuth(
       );
     }
   },
-  { 
+  {
     requireCompany: true,
     requiredPermission: { modulo: 'vendas', acao: 'imprimir' }
   }
@@ -467,4 +467,3 @@ function generatePdfHtml(pedido: any): string {
     </html>
   `;
 }
-

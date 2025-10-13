@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
-import { verifyAuth } from '@/app/lib/verifyAuth';
+import { verifyAuth } from '@/app/lib/auth';
 
 export async function GET(
   request: NextRequest,
@@ -9,7 +9,10 @@ export async function GET(
   try {
     const authResult = await verifyAuth(request);
     if (!authResult.success) {
-      return NextResponse.json({ error: authResult.error }, { status: 401 });
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status ?? 401 }
+      );
     }
 
     const { userId } = authResult;
@@ -58,7 +61,10 @@ export async function POST(
   try {
     const authResult = await verifyAuth(request);
     if (!authResult.success) {
-      return NextResponse.json({ error: authResult.error }, { status: 401 });
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status ?? 401 }
+      );
     }
 
     const { userId } = authResult;
