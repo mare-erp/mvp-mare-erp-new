@@ -125,3 +125,13 @@ Ensure the same port (3000) is used and Nginx proxies to it.
 - Enable fail2ban/UFW as needed.
 - Restrict `proxy_buffering` if using SSE/WebSockets (already no buffering via `proxy_cache_bypass`).
 - Use environment variables (`DATABASE_URL`, `JWT_SECRET`, etc.) via systemd or `.env` in the app directory.
+
+### If Certbot hasn’t been run yet
+When testing the Nginx config before obtaining certificates, comment out the `ssl_certificate*` lines and include-file until `certbot` generates them, or create placeholder files:
+```bash
+sudo mkdir -p /etc/letsencrypt/live/app.mareerp.com.br
+sudo touch /etc/letsencrypt/options-ssl-nginx.conf /etc/letsencrypt/ssl-dhparams.pem
+sudo touch /etc/letsencrypt/live/app.mareerp.com.br/fullchain.pem
+sudo touch /etc/letsencrypt/live/app.mareerp.com.br/privkey.pem
+```
+Remove the placeholders after running `sudo certbot --nginx ...`.
