@@ -6,8 +6,9 @@ Consolidated view of outstanding issues, priorities, and recent updates for the 
 - Fixed `/api/auth/me` to use `withAuth` and Prisma correctly, restoring the session fetch after sign-up.
 - Removed the duplicate `/api/auth/signup` route and aligned the empresa setup flow with `/api/empresa`.
 - Patched the dashboard header to load the logged-in user when props are absent, and masked CNPJ values in the company selector.
-- Added Prisma migration `20250215120000_add_calendar_kanban` for `KanbanStage`/`CalendarEvent` models; run `npx prisma migrate deploy` against the target database.
+- Added Prisma migration `20251015120000_add_calendar_kanban` for `KanbanStage`/`CalendarEvent` models; run `npx prisma migrate deploy` after pulling.
 - Cleaned JSX issues in calendário list view and calendar loading guard, enabling `/calendario` to compile.
+- Updated all API routes to import auth helpers from `app/lib/auth` and reintroduced a `verifyAuth` helper to consolidate authentication logic.
 
 ## Critical Issues (P0)
 - **Auth helper cleanup**: Several routes still import `@/app/lib/verifyAuth` (`app/api/organizacao*`, `app/api/organizacoes*`, `app/api/pedidos/pdf-layout`, `app/api/financeiro/transacoes/[id]`). Either recreate the helper or migrate all to `app/lib/auth`. The same files also depend on `logAuditoria` re-exported ali.
