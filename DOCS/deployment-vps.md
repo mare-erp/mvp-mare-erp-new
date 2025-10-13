@@ -137,9 +137,10 @@ pm2 startup systemd
 Use the dedicated guide `DOCS/nginx-setup.md` for full details. Core steps:
 
 1. Create `sudo nano /etc/nginx/sites-available/mare-erp/mvp-mare-erp-new` with proxy rules pointing to `http://127.0.0.1:3000`.
-2. Enable the site and reload Nginx:
+2. Enable the site (and remove the default stub to avoid conflicts) then reload Nginx:
    ```bash
    sudo ln -s /etc/nginx/sites-available/mare-erp /etc/nginx/sites-enabled/
+   sudo rm -f /etc/nginx/sites-enabled/default
    sudo nginx -t
    sudo systemctl reload nginx
    ```

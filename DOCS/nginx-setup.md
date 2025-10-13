@@ -86,10 +86,12 @@ server {
 }
 ```
 
-Activate the site:
+Activate the site (and disable the default stub so it does not conflict with your catch-all server):
 
 ```bash
 sudo ln -s /etc/nginx/sites-available/mare-erp /etc/nginx/sites-enabled/
+# optional: remove default site installed by nginx
+sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
 sudo systemctl reload nginx
 ```
@@ -125,12 +127,9 @@ Ensure the same port (3000) is used and Nginx proxies to it.
 - Restrict `proxy_buffering` if using SSE/WebSockets (already no buffering via `proxy_cache_bypass`).
 - Use environment variables (`DATABASE_URL`, `JWT_SECRET`, etc.) via systemd or `.env` in the app directory.
 
-### If Certbot hasn’t been run yet
-When testing the Nginx config before obtaining certificates, comment out the `ssl_certificate*` lines and include-file until `certbot` generates them, or create placeholder files:
+### While DNS is propagating
+Let’s Encrypt must reach your host names over HTTP. Until `mareerp.com.br` and `app.mareerp.com.br` resolve to the VPS, keep a plain HTTP proxy (no `ssl_certificate` lines) so `sudo nginx -t` succeeds. After DNS records exist, re-add the HTTPS block and run Certbot with:
+
 ```bash
-sudo mkdir -p /etc/letsencrypt/live/app.mareerp.com.br
-sudo touch /etc/letsencrypt/options-ssl-nginx.conf /etc/letsencrypt/ssl-dhparams.pem
-sudo touch /etc/letsencrypt/live/app.mareerp.com.br/fullchain.pem
-sudo touch /etc/letsencrypt/live/app.mareerp.com.br/privkey.pem
+sudo certbot --nginx -d mareerp.com.br -d www.mareerp.com.br -d app.mareerp.com.br
 ```
-Remove the placeholders after running `sudo certbot --nginx ...`.
