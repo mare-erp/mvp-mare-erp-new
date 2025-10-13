@@ -39,7 +39,7 @@ Create `/etc/nginx/sites-available/mare-erp`:
 server {
     listen 80;
     listen [::]:80;
-    server_name example.com www.example.com;
+    server_name mareerp.com.br www.mareerp.com.br app.mareerp.com.br;
 
     # Redirect HTTP to HTTPS (uncomment when TLS enabled)
     # return 301 https://$host$request_uri;
@@ -48,10 +48,10 @@ server {
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name example.com www.example.com;
+    server_name app.mareerp.com.br;
 
-    ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/app.mareerp.com.br/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/app.mareerp.com.br/privkey.pem;
     include             /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
 
@@ -96,11 +96,11 @@ sudo systemctl reload nginx
 ```
 
 ## 4. HTTPS (Let’s Encrypt)
-Use Certbot to obtain certificates:
+Use Certbot to obtain certificates for the root and `app` subdomain:
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d example.com -d www.example.com
+sudo certbot --nginx -d mareerp.com.br -d www.mareerp.com.br -d app.mareerp.com.br
 ```
 
 Certbot will update the server block with the proper `ssl_certificate` paths and configure HTTP→HTTPS redirects automatically.

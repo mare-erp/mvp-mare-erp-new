@@ -96,7 +96,7 @@ echo "Run seed if desired" && npx tsx scripts/seed.ts
 ## 5. Build & Run the App
 
 ### Systemd (recommended)
-Create `/etc/systemd/system/mare-erp.service` (requires sudo):
+Create `sudo nano /etc/systemd/system/mare-erp.service` (requires sudo):
 ```ini
 [Unit]
 Description=Maré ERP
@@ -105,7 +105,7 @@ After=network.target
 [Service]
 Type=simple
 User=mare
-WorkingDirectory=/var/www/mare-erp
+WorkingDirectory=/var/www/mare-erp/mvp-mare-erp-new
 Environment=NODE_ENV=production
 Environment=PORT=3000
 ExecStart=/usr/bin/npm run start
@@ -136,7 +136,7 @@ pm2 startup systemd
 
 Use the dedicated guide `DOCS/nginx-setup.md` for full details. Core steps:
 
-1. Create `/etc/nginx/sites-available/mare-erp` with proxy rules pointing to `http://127.0.0.1:3000`.
+1. Create `sudo nano /etc/nginx/sites-available/mare-erp/mvp-mare-erp-new` with proxy rules pointing to `http://127.0.0.1:3000`.
 2. Enable the site and reload Nginx:
    ```bash
    sudo ln -s /etc/nginx/sites-available/mare-erp /etc/nginx/sites-enabled/
