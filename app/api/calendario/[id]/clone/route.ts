@@ -1,16 +1,21 @@
-'use client';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
 import { withAuth, AuthContext } from '@/app/lib/auth';
 
 // POST /api/calendario/[id]/clone - Clonar um evento
-async function postHandler(req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) {
+async function postHandler(
+  req: NextRequest,
+  context: AuthContext,
+  routeContext?: { params: { id: string } }
+) {
   try {
-    const { id } = params;
+    const eventId = routeContext?.params?.id;
+    if (!eventId) {
+      return NextResponse.json({ error: 'ID do evento não informado' }, { status: 400 });
+    }
 
     const eventToClone = await prisma.calendarEvent.findFirst({
-      where: { id, organizacaoId: context.organizacaoId },
+      where: { id: eventId, organizacaoId: context.organizacaoId },
     });
 
     if (!eventToClone) {

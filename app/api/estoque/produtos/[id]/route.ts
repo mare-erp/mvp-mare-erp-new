@@ -5,11 +5,24 @@ import { withAuth, AuthContext } from '@/app/lib/auth';
 
 async function getHandler(
   request: NextRequest,
-  { params, context }: { params: { id: string }, context: AuthContext }
+  context: AuthContext,
+  params?: { id: string }
 ) {
   try {
     const { empresaId } = context;
-    const { id } = params;
+    if (!empresaId) {
+      return NextResponse.json(
+        { error: 'Empresa não selecionada' },
+        { status: 400 }
+      );
+    }
+    const id = params?.id;
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID do produto não informado' },
+        { status: 400 }
+      );
+    }
 
     const produto = await prisma.produto.findFirst({
       where: {
@@ -45,11 +58,24 @@ async function getHandler(
 
 async function putHandler(
   request: NextRequest,
-  { params, context }: { params: { id: string }, context: AuthContext }
+  context: AuthContext,
+  params?: { id: string }
 ) {
   try {
     const { empresaId } = context;
-    const { id } = params;
+    if (!empresaId) {
+      return NextResponse.json(
+        { error: 'Empresa não selecionada' },
+        { status: 400 }
+      );
+    }
+    const id = params?.id;
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID do produto não informado' },
+        { status: 400 }
+      );
+    }
     const body = await request.json();
 
     const {
@@ -172,11 +198,24 @@ async function putHandler(
 
 async function deleteHandler(
   request: NextRequest,
-  { params, context }: { params: { id: string }, context: AuthContext }
+  context: AuthContext,
+  params?: { id: string }
 ) {
   try {
     const { empresaId } = context;
-    const { id } = params;
+    if (!empresaId) {
+      return NextResponse.json(
+        { error: 'Empresa não selecionada' },
+        { status: 400 }
+      );
+    }
+    const id = params?.id;
+    if (!id) {
+      return NextResponse.json(
+        { error: 'ID do produto não informado' },
+        { status: 400 }
+      );
+    }
 
     // Verificar se o produto existe e pertence à empresa
     const produtoExistente = await prisma.produto.findFirst({
@@ -226,16 +265,19 @@ async function deleteHandler(
 
 // Protegendo as rotas com o novo HOC de autenticação
 export const GET = withAuth(
-  (req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) => getHandler(req, { params, context }),
+  (req: NextRequest, context: AuthContext, routeContext?: { params: { id: string } }) =>
+    getHandler(req, context, routeContext?.params),
   { requireCompany: true }
 );
 
 export const PUT = withAuth(
-  (req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) => putHandler(req, { params, context }),
+  (req: NextRequest, context: AuthContext, routeContext?: { params: { id: string } }) =>
+    putHandler(req, context, routeContext?.params),
   { requireCompany: true }
 );
 
 export const DELETE = withAuth(
-  (req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) => deleteHandler(req, { params, context }),
+  (req: NextRequest, context: AuthContext, routeContext?: { params: { id: string } }) =>
+    deleteHandler(req, context, routeContext?.params),
   { requireCompany: true }
 );

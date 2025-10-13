@@ -5,9 +5,15 @@ import bcrypt from 'bcryptjs';
 
 // GET - Listar membros da organização
 export const GET = withAuth(
-  async (req: NextRequest, context, { params }: { params: { id: string } }) => {
+  async (req: NextRequest, context, routeContext?: { params: { id: string } }) => {
     try {
-      const organizacaoId = params.id;
+      const organizacaoId = routeContext?.params?.id;
+      if (!organizacaoId) {
+        return NextResponse.json(
+          { error: 'ID da organização não informado' },
+          { status: 400 }
+        );
+      }
 
       // Verificar se usuário tem acesso à organização
       if (context.organizacaoId !== organizacaoId) {
@@ -63,9 +69,15 @@ export const GET = withAuth(
 
 // POST - Convidar novo membro
 export const POST = withAuth(
-  async (req: NextRequest, context, { params }: { params: { id: string } }) => {
+  async (req: NextRequest, context, routeContext?: { params: { id: string } }) => {
     try {
-      const organizacaoId = params.id;
+      const organizacaoId = routeContext?.params?.id;
+      if (!organizacaoId) {
+        return NextResponse.json(
+          { error: 'ID da organização não informado' },
+          { status: 400 }
+        );
+      }
       const { email, nome, role, permissoes } = await req.json();
 
       // Verificar se usuário tem acesso à organização

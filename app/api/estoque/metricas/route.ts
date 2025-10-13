@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
 import { withAuth, AuthContext } from '@/app/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 async function getHandler(request: NextRequest, context: AuthContext) {
   try {
     const { empresaId } = context;

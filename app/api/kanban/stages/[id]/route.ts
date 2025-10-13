@@ -3,9 +3,16 @@ import { prisma } from '@/app/lib/prisma';
 import { withAuth, AuthContext } from '@/app/lib/auth';
 
 // PUT /api/kanban/stages/[id] - Atualizar uma etapa
-async function putHandler(req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) {
+async function putHandler(
+  req: NextRequest,
+  context: AuthContext,
+  routeContext?: { params: { id: string } }
+) {
   try {
-    const { id } = params;
+    const id = routeContext?.params?.id;
+    if (!id) {
+      return NextResponse.json({ error: 'ID da etapa não informado' }, { status: 400 });
+    }
     const body = await req.json();
     const { nome, capacidade } = body;
 
@@ -33,9 +40,16 @@ async function putHandler(req: NextRequest, { params }: { params: { id: string }
 }
 
 // DELETE /api/kanban/stages/[id] - Excluir uma etapa
-async function deleteHandler(req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) {
+async function deleteHandler(
+  req: NextRequest,
+  context: AuthContext,
+  routeContext?: { params: { id: string } }
+) {
     try {
-        const { id } = params;
+        const id = routeContext?.params?.id;
+        if (!id) {
+          return NextResponse.json({ error: 'ID da etapa não informado' }, { status: 400 });
+        }
         await prisma.kanbanStage.delete({ where: { id, organizacaoId: context.organizacaoId } });
         return new NextResponse(null, { status: 204 });
     } catch (error) {

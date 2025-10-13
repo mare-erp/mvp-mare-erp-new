@@ -15,6 +15,9 @@ const produtoSchema = z.object({
 // GET /api/produtos - Listar produtos da empresa
 async function getHandler(req: NextRequest, context: AuthContext) {
   try {
+    if (!context.empresaId) {
+      return NextResponse.json({ message: 'Empresa não selecionada.' }, { status: 400 });
+    }
     const produtos = await prisma.produto.findMany({
       where: { empresaId: context.empresaId },
       orderBy: { nome: 'asc' },
@@ -29,6 +32,9 @@ async function getHandler(req: NextRequest, context: AuthContext) {
 // POST /api/produtos - Criar um novo produto/serviço
 async function postHandler(req: NextRequest, context: AuthContext) {
   try {
+    if (!context.empresaId) {
+      return NextResponse.json({ message: 'Empresa não selecionada.' }, { status: 400 });
+    }
     const body = await req.json();
     const validation = produtoSchema.safeParse(body);
     if (!validation.success) {
@@ -40,6 +46,7 @@ async function postHandler(req: NextRequest, context: AuthContext) {
     const novoProduto = await prisma.produto.create({
       data: {
         ...data,
+        quantidadeEstoque: data.tipo === 'PRODUTO' ? data.quantidadeEstoque ?? 0 : null,
         empresaId: context.empresaId,
       },
     });

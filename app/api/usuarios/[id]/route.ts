@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import prisma from '@/app/lib/prisma';
+import { prisma } from '@/app/lib/prisma';
 import bcrypt from 'bcryptjs';
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
@@ -40,7 +40,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ message: 'Usuário não encontrado.' }, { status: 404 });
     }
 
-    let hashedPassword = existingUser.senha;
+    let hashedPassword = existingUser.senhaHash;
     if (senha) {
       hashedPassword = await bcrypt.hash(senha, 10);
     }
@@ -52,7 +52,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         email: email ?? existingUser.email,
         role: role ?? existingUser.role,
         ativo: ativo ?? existingUser.ativo,
-        senha: hashedPassword,
+        senhaHash: hashedPassword,
       },
       select: {
         id: true,
@@ -92,4 +92,3 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     return NextResponse.json({ message: 'Erro interno do servidor.' }, { status: 500 });
   }
 }
-

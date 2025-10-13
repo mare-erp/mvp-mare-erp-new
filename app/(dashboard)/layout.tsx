@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import { DataProvider } from '@/app/contexts/DataContexts';
 import ErrorBoundary from '@/app/components/ErrorBoundary';
+import { AuthProvider } from '@/app/hooks/useAuth';
 
 export default function DashboardLayout({
   children,
@@ -18,24 +19,26 @@ export default function DashboardLayout({
   };
 
   return (
-    <DataProvider>
-      <div className="min-h-screen w-full bg-gray-50">
-        <Sidebar
-          isCollapsed={isSidebarCollapsed}
-          toggleSidebar={toggleSidebar}
-        />
-        <div
-          className={`
-            relative transition-all duration-300 ease-in-out
-            ${isSidebarCollapsed ? 'pl-20' : 'pl-64'}
-          `}
-        >
-          <Header />
-          <main className="p-8 pt-28">
-            <ErrorBoundary>{children}</ErrorBoundary>
-          </main>
+    <AuthProvider>
+      <DataProvider>
+        <div className="min-h-screen w-full bg-gray-50">
+          <Sidebar
+            isCollapsed={isSidebarCollapsed}
+            toggleSidebar={toggleSidebar}
+          />
+          <div
+            className={`
+              relative transition-all duration-300 ease-in-out
+              ${isSidebarCollapsed ? 'pl-20' : 'pl-64'}
+            `}
+          >
+            <Header />
+            <main className="p-8 pt-28">
+              <ErrorBoundary>{children}</ErrorBoundary>
+            </main>
+          </div>
         </div>
-      </div>
-    </DataProvider>
+      </DataProvider>
+    </AuthProvider>
   );
 }

@@ -11,7 +11,7 @@ const clienteSchema = z.object({
   nome: z.string().min(2, 'O Nome / Razão Social é obrigatório.'),
   tipoPessoa: z.nativeEnum(TipoPessoa),
   cpfCnpj: z.string().optional(),
-  email: z.string().email('Formato de e-mail inválido.').optional().or(z.literal('')) as z.ZodOptional<z.ZodString>,
+  email: z.union([z.string().email('Formato de e-mail inválido.'), z.literal('')]).optional(),
   telefone: z.string().optional(),
   cep: z.string().optional(),
   rua: z.string().optional(),
@@ -48,6 +48,10 @@ async function getHandler(request: NextRequest, context: AuthContext) {
 // POST para criar um novo cliente (agora reflete o schema atualizado)
 async function postHandler(request: NextRequest, context: AuthContext) {
   try {
+    if (!context.empresaId) {
+      return NextResponse.json({ message: 'Empresa não selecionada.' }, { status: 400 });
+    }
+
     const body = await request.json();
     const validation = clienteSchema.safeParse(body);
 
@@ -56,11 +60,17 @@ async function postHandler(request: NextRequest, context: AuthContext) {
     }
     
     const data = validation.data;
+    const normalizedData = {
+      ...data,
+      email: data.email === '' ? null : data.email,
+      telefone: data.telefone === '' ? null : data.telefone,
+      cpfCnpj: data.cpfCnpj === '' ? null : data.cpfCnpj,
+    };
 
     // Lógica para evitar duplicidade de CPF/CNPJ se ele for fornecido
-    if (data.cpfCnpj) {
+    if (normalizedData.cpfCnpj) {
         const existingCliente = await prisma.cliente.findFirst({
-            where: { cpfCnpj: data.cpfCnpj, empresaId: context.empresaId }
+            where: { cpfCnpj: normalizedData.cpfCnpj, empresaId: context.empresaId }
         });
         if (existingCliente) {
             return NextResponse.json({ message: 'Um cliente com este CPF/CNPJ já existe.' }, { status: 409 });
@@ -69,7 +79,7 @@ async function postHandler(request: NextRequest, context: AuthContext) {
     
     const novoCliente = await prisma.cliente.create({
       data: {
-        ...data,
+        ...normalizedData,
         empresaId: context.empresaId,
       },
     });

@@ -40,14 +40,15 @@ export async function GET(request: Request) {
       _sum: { valorTotal: true },
     });
 
-    const summary = {
+    const summary: Record<StatusPedido, { count: number; total: number }> = {
       [StatusPedido.VENDIDO]: { count: 0, total: 0 },
       [StatusPedido.ORCAMENTO]: { count: 0, total: 0 },
       [StatusPedido.RECUSADO]: { count: 0, total: 0 },
+      [StatusPedido.PENDENTE]: { count: 0, total: 0 },
     };
 
     stats.forEach((stat) => {
-      summary[stat.status] = {
+      summary[stat.status as StatusPedido] = {
         count: stat._count._all,
         total: Number(stat._sum.valorTotal) || 0,
       };

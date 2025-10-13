@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+export const dynamic = 'force-dynamic';
+
+import { Suspense, useState, useEffect, FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Building2, Users, User, FileText, Settings, Plus, Trash2 } from 'lucide-react';
 import { Role } from '@prisma/client';
 
 type Tab = 'empresa' | 'equipe' | 'conta' | 'logs' | 'sistema' | 'organizacao';
 
-export default function ConfiguracoesPage() {
+function ConfiguracoesContent() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<Tab>('empresa');
 
@@ -83,6 +85,14 @@ export default function ConfiguracoesPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ConfiguracoesPage() {
+  return (
+    <Suspense fallback={<div>Carregando configurações...</div>}>
+      <ConfiguracoesContent />
+    </Suspense>
   );
 }
 
@@ -677,4 +687,3 @@ function SistemaTab() {
     </div>
   );
 }
-

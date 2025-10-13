@@ -27,12 +27,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
       include: {
         cliente: true,
         usuario: { select: { nome: true, email: true } },
-        empresa: { 
-          select: { 
-            nome: true, 
-            cnpj: true, 
-            logoUrl: true,
-            endereco: true,
+        empresa: {
+          select: {
+            nome: true,
+            cnpj: true,
             rua: true,
             numero: true,
             complemento: true,
@@ -343,4 +341,3 @@ export async function GET(request: Request, { params }: { params: { id: string }
     return NextResponse.json({ message: 'Erro ao gerar PDF do pedido.' }, { status: 500 });
   }
 }
-

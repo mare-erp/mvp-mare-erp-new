@@ -1,7 +1,9 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+export const dynamic = 'force-dynamic';
+
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Edit, Trash2, Shield, Users, Eye, Settings } from 'lucide-react';
 import { useAuth } from '@/app/hooks/useAuth';
 import UserModal from './components/UserModal'; // Importar o UserModal
@@ -97,27 +99,14 @@ export default function UsuariosPage() {
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [selectedUserPermissions, setSelectedUserPermissions] = useState<Permissoes>({});
 
-  // Verificar permissão para acessar a página
-  if (!hasPermission('usuarios', 'visualizar')) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Shield className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Acesso Negado</h3>
-          <p className="text-gray-500">Você não tem permissão para acessar a gestão de usuários.</p>
-        </div>
-      </div>
-    );
-  }
+  const canView = hasPermission('usuarios', 'visualizar');
 
-  useEffect(() => {
-    fetchUsuarios();
-  }, []);
+  const fetchUsuarios = useCallback(async () => {
+    if (!organizacao?.id) return;
 
-  const fetchUsuarios = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/organizacoes/${organizacao?.id}/membros`, {
+      const response = await fetch(`/api/organizacoes/${organizacao.id}/membros`, {
         credentials: 'include'
       });
 
@@ -130,7 +119,24 @@ export default function UsuariosPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [organizacao?.id]);
+
+  useEffect(() => {
+    if (!canView) return;
+    fetchUsuarios();
+  }, [canView, fetchUsuarios]);
+
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Shield className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Acesso Negado</h3>
+          <p className="text-gray-500">Você não tem permissão para acessar a gestão de usuários.</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleAddUser = () => {
     setEditingUser(null);
@@ -407,4 +413,3 @@ export default function UsuariosPage() {
     </div>
   );
 }
-

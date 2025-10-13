@@ -47,16 +47,26 @@ export async function GET(request: Request, { params }: { params: { id: string }
       include: {
         cliente: { select: { id: true, nome: true } },
         usuario: { select: { id: true, nome: true, email: true } },
-        empresa: { select: { nome: true, logoUrl: true, endereco: true, telefone: true, email: true } },
+        empresa: {
+          select: {
+            nome: true,
+            telefone: true,
+            email: true,
+            rua: true,
+            numero: true,
+            complemento: true,
+            bairro: true,
+            cidade: true,
+            uf: true,
+            cep: true
+          }
+        },
         itens: {
           include: {
             produto: { select: { id: true, nome: true, tipo: true } }
           }
         },
         historico: {
-          include: {
-            usuario: { select: { nome: true } }
-          },
           orderBy: { data: 'desc' }
         }
       },
@@ -89,7 +99,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const token = cookieStore.get('auth-token')?.value;
     if (!token) return NextResponse.json({ message: 'Não autorizado' }, { status: 401 });
 
-    const { empresaId, userId: usuarioId } = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
+    const { empresaId } = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
     
     const body = await request.json();
     const validation = updatePedidoSchema.safeParse(body);
@@ -152,7 +162,9 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       
       // Se há itens para atualizar, calcular novo valor total
       if (itens) {
-        const valorTotal = itens.reduce((acc, item) => acc + (item.quantidade * item.precoUnitario), 0) + (frete || pedidoExistente.frete || 0);
+        const valorItens = itens.reduce((acc, item) => acc + (item.quantidade * item.precoUnitario), 0);
+        const freteValor = frete !== undefined ? frete : Number(pedidoExistente.frete ?? 0);
+        const valorTotal = valorItens + freteValor;
         updateData.valorTotal = valorTotal;
 
         // Remover itens existentes
@@ -169,6 +181,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
               descricao: item.descricao,
               quantidade: item.quantidade,
               precoUnitario: item.precoUnitario,
+              subtotal: item.quantidade * item.precoUnitario,
             },
           });
         }
@@ -186,8 +199,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         await tx.historicoPedido.create({
           data: {
             pedidoId: params.id,
-            descricao: alteracoes.join(', '),
-            usuarioId: usuarioId,
+            descricao: alteracoes.join(', ')
           },
         });
       }
@@ -225,7 +237,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     const token = cookieStore.get('auth-token')?.value;
     if (!token) return NextResponse.json({ message: 'Não autorizado' }, { status: 401 });
 
-    const { empresaId, userId: usuarioId } = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
+    const { empresaId } = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
 
     // Verificar se o pedido existe e pertence à empresa
     const pedidoExistente = await prisma.pedido.findFirst({
@@ -244,8 +256,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       await tx.historicoPedido.create({
         data: {
           pedidoId: params.id,
-          descricao: `Pedido excluído`,
-          usuarioId: usuarioId,
+          descricao: `Pedido excluído`
         },
       });
 
@@ -271,4 +282,3 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     return NextResponse.json({ message: 'Erro ao deletar o pedido.' }, { status: 500 });
   }
 }
-

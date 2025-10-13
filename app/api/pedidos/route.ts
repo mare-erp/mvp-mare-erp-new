@@ -26,6 +26,10 @@ const createPedidoSchema = z.object({
 
 async function getHandler(request: NextRequest, context: AuthContext) {
   try {
+    if (!context.empresaId) {
+      return NextResponse.json({ message: 'Empresa não selecionada.' }, { status: 400 });
+    }
+    const empresaId = context.empresaId;
     const { searchParams } = new URL(request.url);
     const statusParam = searchParams.get('status');
     const status = statusParam ? StatusPedido[statusParam as keyof typeof StatusPedido] : null;
@@ -34,7 +38,7 @@ async function getHandler(request: NextRequest, context: AuthContext) {
     const dataFim = searchParams.get('dataFim');
 
     const whereClause: any = {
-      empresaId: context.empresaId,
+      empresaId,
       ...(status && { status: status }),
       ...(usuarioId && { usuarioId: usuarioId }),
       ...(dataInicio && dataFim && { 
@@ -62,6 +66,10 @@ async function getHandler(request: NextRequest, context: AuthContext) {
 
 async function postHandler(request: NextRequest, context: AuthContext) {
   try {
+    if (!context.empresaId) {
+      return NextResponse.json({ message: 'Empresa não selecionada.' }, { status: 400 });
+    }
+    const empresaId = context.empresaId;
     const body = await request.json();
     const validation = createPedidoSchema.safeParse(body);
     if (!validation.success) {
@@ -83,7 +91,7 @@ async function postHandler(request: NextRequest, context: AuthContext) {
     const novoPedido = await prisma.$transaction(async (tx) => {
       // Verificar se o número do pedido já existe
       const pedidoExistente = await tx.pedido.findUnique({
-        where: { empresaId_numeroPedido: { empresaId: context.empresaId, numeroPedido } },
+        where: { empresaId_numeroPedido: { empresaId, numeroPedido } },
       });
 
       if (pedidoExistente) {
@@ -94,7 +102,7 @@ async function postHandler(request: NextRequest, context: AuthContext) {
 
       const pedido = await tx.pedido.create({
         data: {
-          empresaId: context.empresaId,
+          empresaId,
           clienteId,
           usuarioId: context.userId,
           status,
@@ -112,8 +120,7 @@ async function postHandler(request: NextRequest, context: AuthContext) {
       await tx.historicoPedido.create({
         data: {
           pedidoId: pedido.id,
-          descricao: `Pedido criado com status: ${status}`,
-          usuarioId: context.userId,
+          descricao: `Pedido criado com status: ${status}`
         },
       });
 
@@ -125,6 +132,7 @@ async function postHandler(request: NextRequest, context: AuthContext) {
             descricao: item.descricao,
             quantidade: item.quantidade,
             precoUnitario: item.precoUnitario,
+            subtotal: item.quantidade * item.precoUnitario,
           },
         });
 
@@ -146,7 +154,7 @@ async function postHandler(request: NextRequest, context: AuthContext) {
               tipo: 'SAIDA',
               quantidade: item.quantidade,
               observacao: `Venda - Pedido #${numeroPedido}`,
-              empresaId: context.empresaId,
+              empresaId,
             },
           });
         }

@@ -18,8 +18,7 @@ export const GET = withAuth(async (req: NextRequest, context) => {
               select: {
                 id: true,
                 nome: true,
-                cnpj: true,
-                logoUrl: true
+                cnpj: true
               }
             },
             _count: {
@@ -40,7 +39,7 @@ export const GET = withAuth(async (req: NextRequest, context) => {
       role: membro.role,
       empresas: membro.organizacao.empresas,
       totalMembros: membro.organizacao._count.membros,
-      isAdmin: membro.organizacao.adminId === context.userId
+      isAdmin: membro.role === 'ADMIN'
     }));
 
     return NextResponse.json(resultado);
@@ -85,8 +84,7 @@ export const POST = withAuth(async (req: NextRequest, context) => {
       // Criar organização
       const organizacao = await tx.organizacao.create({
         data: {
-          nome,
-          adminId: context.userId
+          nome
         }
       });
 

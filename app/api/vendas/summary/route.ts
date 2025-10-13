@@ -3,6 +3,8 @@ import { prisma } from '@/app/lib/prisma';
 import { withAuth, AuthContext } from '@/app/lib/auth';
 import { StatusPedido } from '@prisma/client';
 
+export const dynamic = 'force-dynamic';
+
 async function getHandler(request: NextRequest, context: AuthContext) {
   try {
     const { empresaId } = context;

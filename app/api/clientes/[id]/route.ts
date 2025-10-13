@@ -9,7 +9,7 @@ const clienteSchema = z.object({
   nome: z.string().min(2, 'O Nome / Razão Social é obrigatório.').optional(),
   tipoPessoa: z.nativeEnum(TipoPessoa).optional(),
   cpfCnpj: z.string().optional(),
-  email: z.string().email('Formato de e-mail inválido.').optional().or(z.literal('')) as z.ZodOptional<z.ZodString>,
+  email: z.union([z.string().email('Formato de e-mail inválido.'), z.literal('')]).optional(),
   telefone: z.string().optional(),
   cep: z.string().optional(),
   rua: z.string().optional(),
@@ -29,9 +29,15 @@ const clienteSchema = z.object({
     path: ["cpfCnpj"],
 });
 
-async function getHandler(request: NextRequest, { params, context }: { params: { id: string }, context: AuthContext }) {
+async function getHandler(request: NextRequest, context: AuthContext, params?: { id: string }) {
   try {
-    const { id } = params;
+    const id = params?.id;
+    if (!id) {
+      return NextResponse.json({ message: 'ID do cliente não informado.' }, { status: 400 });
+    }
+    if (!context.empresaId) {
+      return NextResponse.json({ message: 'Empresa não selecionada.' }, { status: 400 });
+    }
 
     const cliente = await prisma.cliente.findUnique({
       where: { id, empresaId: context.empresaId },
@@ -48,9 +54,15 @@ async function getHandler(request: NextRequest, { params, context }: { params: {
   }
 }
 
-async function putHandler(request: NextRequest, { params, context }: { params: { id: string }, context: AuthContext }) {
+async function putHandler(request: NextRequest, context: AuthContext, params?: { id: string }) {
   try {
-    const { id } = params;
+    const id = params?.id;
+    if (!id) {
+      return NextResponse.json({ message: 'ID do cliente não informado.' }, { status: 400 });
+    }
+    if (!context.empresaId) {
+      return NextResponse.json({ message: 'Empresa não selecionada.' }, { status: 400 });
+    }
     const body = await request.json();
     const validation = clienteSchema.safeParse(body);
 
@@ -92,9 +104,15 @@ async function putHandler(request: NextRequest, { params, context }: { params: {
   }
 }
 
-async function deleteHandler(request: NextRequest, { params, context }: { params: { id: string }, context: AuthContext }) {
+async function deleteHandler(request: NextRequest, context: AuthContext, params?: { id: string }) {
   try {
-    const { id } = params;
+    const id = params?.id;
+    if (!id) {
+      return NextResponse.json({ message: 'ID do cliente não informado.' }, { status: 400 });
+    }
+    if (!context.empresaId) {
+      return NextResponse.json({ message: 'Empresa não selecionada.' }, { status: 400 });
+    }
 
     const existingCliente = await prisma.cliente.findUnique({ 
       where: { id, empresaId: context.empresaId },
@@ -127,16 +145,19 @@ async function deleteHandler(request: NextRequest, { params, context }: { params
 }
 
 export const GET = withAuth(
-  (req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) => getHandler(req, { params, context }),
+  (req: NextRequest, context: AuthContext, routeContext?: { params: { id: string } }) =>
+    getHandler(req, context, routeContext?.params),
   { requireCompany: true }
 );
 
 export const PUT = withAuth(
-  (req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) => putHandler(req, { params, context }),
+  (req: NextRequest, context: AuthContext, routeContext?: { params: { id: string } }) =>
+    putHandler(req, context, routeContext?.params),
   { requireCompany: true }
 );
 
 export const DELETE = withAuth(
-  (req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) => deleteHandler(req, { params, context }),
+  (req: NextRequest, context: AuthContext, routeContext?: { params: { id: string } }) =>
+    deleteHandler(req, context, routeContext?.params),
   { requireCompany: true }
 );

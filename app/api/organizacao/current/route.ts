@@ -1,20 +1,15 @@
 
-import { NextResponse } from 'next/server';
-import { verifyAuth } from '@/app/lib/auth';
-import prisma from '@/app/lib/prisma';
+import { NextRequest, NextResponse } from 'next/server';
+import { withAuth, AuthContext } from '@/app/lib/auth';
+import { prisma } from '@/app/lib/prisma';
 
-export async function GET(req: Request) {
-  const result = await verifyAuth(req);
+export const dynamic = 'force-dynamic';
 
-  if (!result.user) {
-    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-  }
-
+async function getHandler(_req: NextRequest, context: AuthContext) {
   try {
-    // Encontrar a primeira organização da qual o usuário é membro
     const membroOrganizacao = await prisma.membroOrganizacao.findFirst({
       where: {
-        usuarioId: result.user.id,
+        usuarioId: context.userId,
         ativo: true,
       },
       include: {
@@ -34,9 +29,10 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json(membroOrganizacao.organizacao);
-
   } catch (error) {
     console.error('Erro ao buscar organização atual:', error);
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 });
   }
 }
+
+export const GET = withAuth(getHandler);

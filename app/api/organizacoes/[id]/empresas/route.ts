@@ -4,9 +4,15 @@ import { withAuth, logAuditoria } from '@/app/lib/auth';
 
 // GET - Listar empresas da organização
 export const GET = withAuth(
-  async (req: NextRequest, context, { params }: { params: { id: string } }) => {
+  async (req: NextRequest, context, routeContext?: { params: { id: string } }) => {
     try {
-      const organizacaoId = params.id;
+      const organizacaoId = routeContext?.params?.id;
+      if (!organizacaoId) {
+        return NextResponse.json(
+          { error: 'ID da organização não informado' },
+          { status: 400 }
+        );
+      }
 
       // Verificar se usuário tem acesso à organização
       if (context.organizacaoId !== organizacaoId) {
@@ -37,8 +43,10 @@ export const GET = withAuth(
         id: empresa.id,
         nome: empresa.nome,
         cnpj: empresa.cnpj,
-        logoUrl: empresa.logoUrl,
-        endereco: empresa.endereco,
+        logoUrl:
+          'logoUrl' in empresa ? (empresa as { logoUrl?: string | null }).logoUrl ?? null : null,
+        endereco:
+          'endereco' in empresa ? (empresa as { endereco?: string | null }).endereco ?? null : null,
         telefone: empresa.telefone,
         email: empresa.email,
         createdAt: empresa.createdAt,
@@ -63,9 +71,15 @@ export const GET = withAuth(
 
 // POST - Criar nova empresa
 export const POST = withAuth(
-  async (req: NextRequest, context, { params }: { params: { id: string } }) => {
+  async (req: NextRequest, context, routeContext?: { params: { id: string } }) => {
     try {
-      const organizacaoId = params.id;
+      const organizacaoId = routeContext?.params?.id;
+      if (!organizacaoId) {
+        return NextResponse.json(
+          { error: 'ID da organização não informado' },
+          { status: 400 }
+        );
+      }
       const { nome, cnpj, endereco, telefone, email } = await req.json();
 
       // Verificar se usuário tem acesso à organização
@@ -102,7 +116,6 @@ export const POST = withAuth(
         data: {
           nome,
           cnpj: cnpj || null,
-          endereco: endereco || null,
           telefone: telefone || null,
           email: email || null,
           organizacaoId
@@ -127,7 +140,8 @@ export const POST = withAuth(
           id: novaEmpresa.id,
           nome: novaEmpresa.nome,
           cnpj: novaEmpresa.cnpj,
-          endereco: novaEmpresa.endereco,
+          endereco:
+            'endereco' in novaEmpresa ? (novaEmpresa as { endereco?: string | null }).endereco ?? null : null,
           telefone: novaEmpresa.telefone,
           email: novaEmpresa.email
         }

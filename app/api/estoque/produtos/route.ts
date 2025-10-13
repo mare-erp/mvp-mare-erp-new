@@ -5,6 +5,12 @@ import { withAuth, AuthContext } from '@/app/lib/auth';
 async function getHandler(request: NextRequest, context: AuthContext) {
   try {
     const { empresaId } = context;
+    if (!empresaId) {
+      return NextResponse.json(
+        { error: 'Empresa não selecionada' },
+        { status: 400 }
+      );
+    }
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
@@ -60,6 +66,12 @@ async function getHandler(request: NextRequest, context: AuthContext) {
 async function postHandler(request: NextRequest, context: AuthContext) {
   try {
     const { empresaId } = context;
+    if (!empresaId) {
+      return NextResponse.json(
+        { error: 'Empresa não selecionada' },
+        { status: 400 }
+      );
+    }
     const body = await request.json();
 
     const {

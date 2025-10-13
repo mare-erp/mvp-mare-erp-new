@@ -21,6 +21,10 @@ export interface AuthContext {
   permissoes?: any;
 }
 
+export type VerifyAuthSuccess = { success: true } & AuthContext;
+export type VerifyAuthFailure = { success: false; error: string; status: number };
+export type VerifyAuthResult = VerifyAuthSuccess | VerifyAuthFailure;
+
 // Rate limiting storage (em produção usar Redis)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
@@ -129,7 +133,7 @@ export async function getUserPermissions(
     where: {
       organizacaoId_usuarioId: {
         organizacaoId,
-        usuarioId
+        usuarioId: userId
       }
     }
   });
@@ -250,14 +254,14 @@ async function resolveAuthContext(
 }
 
 // Middleware principal para APIs
-export function withAuth(
-  handler: (req: NextRequest, context: AuthContext) => Promise<NextResponse>,
+export function withAuth<RouteContext = unknown>(
+  handler: (req: NextRequest, context: AuthContext, routeContext?: RouteContext) => Promise<NextResponse>,
   options: AuthOptions = {}
 ) {
-  return async (req: NextRequest) => {
+  return async (req: NextRequest, routeContext?: RouteContext) => {
     try {
       const context = await resolveAuthContext(req, options);
-      return await handler(req, context);
+      return await handler(req, context, routeContext);
 
     } catch (error) {
       if (error instanceof RateLimitError) {
@@ -286,7 +290,7 @@ export function withAuth(
 export async function verifyAuth(
   req: NextRequest,
   options: AuthOptions = {}
-) {
+): Promise<VerifyAuthResult> {
   try {
     const context = await resolveAuthContext(req, options);
     return { success: true, ...context };

@@ -6,6 +6,9 @@ import { StatusPedido } from '@prisma/client';
 async function getHandler(request: NextRequest, context: AuthContext) {
   try {
     const { empresaId } = context;
+    if (!empresaId) {
+      return NextResponse.json({ error: 'Empresa não selecionada' }, { status: 400 });
+    }
     const { searchParams } = new URL(request.url);
     const usuarioId = searchParams.get('usuarioId');
     const status = searchParams.get('status');
@@ -39,6 +42,9 @@ async function getHandler(request: NextRequest, context: AuthContext) {
 async function postHandler(request: NextRequest, context: AuthContext) {
   try {
     const { empresaId, userId } = context;
+    if (!empresaId) {
+      return NextResponse.json({ error: 'Empresa não selecionada' }, { status: 400 });
+    }
     const body = await request.json();
     const { clienteId, itens, observacoes } = body;
 

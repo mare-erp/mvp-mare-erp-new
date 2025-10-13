@@ -4,12 +4,19 @@ import { prisma } from '@/app/lib/prisma';
 import { StatusPedido } from '@prisma/client';
 import { withAuth, AuthContext } from '@/app/lib/auth';
 
-async function getHandler(request: NextRequest, { params, context }: { params: { id: string }, context: AuthContext }) {
+async function getHandler(request: NextRequest, context: AuthContext, params?: { id: string }) {
   try {
-    const { id } = params;
+    const id = params?.id;
+    if (!id) {
+      return NextResponse.json({ message: 'ID do pedido não informado.' }, { status: 400 });
+    }
+    if (!context.empresaId) {
+      return NextResponse.json({ message: 'Empresa não selecionada.' }, { status: 400 });
+    }
+    const empresaId = context.empresaId;
 
     const pedido = await prisma.pedido.findUnique({
-      where: { id, empresaId: context.empresaId },
+      where: { id, empresaId },
       include: {
         cliente: { select: { id: true, nome: true } },
         usuario: { select: { id: true, nome: true } },
@@ -40,12 +47,19 @@ async function getHandler(request: NextRequest, { params, context }: { params: {
   }
 }
 
-async function putHandler(request: NextRequest, { params, context }: { params: { id: string }, context: AuthContext }) {
+async function putHandler(request: NextRequest, context: AuthContext, params?: { id: string }) {
   try {
-    const { id } = params;
+    const id = params?.id;
+    if (!id) {
+      return NextResponse.json({ message: 'ID do pedido não informado.' }, { status: 400 });
+    }
+    if (!context.empresaId) {
+      return NextResponse.json({ message: 'Empresa não selecionada.' }, { status: 400 });
+    }
+    const empresaId = context.empresaId;
     const { clienteId, status, observacoes, itens } = await request.json();
 
-    const existingPedido = await prisma.pedido.findUnique({ where: { id, empresaId: context.empresaId } });
+    const existingPedido = await prisma.pedido.findUnique({ where: { id, empresaId } });
     if (!existingPedido) {
       return NextResponse.json({ message: 'Pedido não encontrado.' }, { status: 404 });
     }
@@ -63,7 +77,7 @@ async function putHandler(request: NextRequest, { params, context }: { params: {
 
       for (const item of itens) {
         const produto = await prisma.produto.findUnique({
-          where: { id: item.produtoId, empresaId: context.empresaId },
+          where: { id: item.produtoId, empresaId },
         });
 
         if (!produto) {
@@ -75,6 +89,7 @@ async function putHandler(request: NextRequest, { params, context }: { params: {
 
         itensParaCriar.push({
           produtoId: produto.id,
+          descricao: item.descricao ?? produto.nome,
           quantidade: item.quantidade,
           precoUnitario: produto.preco,
           subtotal: subtotal,
@@ -95,7 +110,7 @@ async function putHandler(request: NextRequest, { params, context }: { params: {
               tipo: 'SAIDA',
               quantidade: item.quantidade,
               observacao: `Venda - Pedido ${clienteId}`,
-              empresaId: context.empresaId,
+              empresaId,
             },
           });
         }
@@ -107,7 +122,7 @@ async function putHandler(request: NextRequest, { params, context }: { params: {
     }
 
     const updatedPedido = await prisma.pedido.update({
-      where: { id, empresaId: context.empresaId },
+      where: { id, empresaId },
       data: {
         clienteId: clienteId ?? existingPedido.clienteId,
         status: status ?? existingPedido.status,
@@ -126,11 +141,18 @@ async function putHandler(request: NextRequest, { params, context }: { params: {
   }
 }
 
-async function deleteHandler(request: NextRequest, { params, context }: { params: { id: string }, context: AuthContext }) {
+async function deleteHandler(request: NextRequest, context: AuthContext, params?: { id: string }) {
   try {
-    const { id } = params;
+    const id = params?.id;
+    if (!id) {
+      return NextResponse.json({ message: 'ID do pedido não informado.' }, { status: 400 });
+    }
+    if (!context.empresaId) {
+      return NextResponse.json({ message: 'Empresa não selecionada.' }, { status: 400 });
+    }
+    const empresaId = context.empresaId;
 
-    const existingPedido = await prisma.pedido.findUnique({ where: { id, empresaId: context.empresaId } });
+    const existingPedido = await prisma.pedido.findUnique({ where: { id, empresaId } });
     if (!existingPedido) {
       return NextResponse.json({ message: 'Pedido não encontrado.' }, { status: 404 });
     }
@@ -142,7 +164,7 @@ async function deleteHandler(request: NextRequest, { params, context }: { params
     });
 
     for (const item of itensPedido) {
-      if (item.produto.tipo === 'PRODUTO') {
+      if (item.produtoId && item.produto && item.produto.tipo === 'PRODUTO') {
         await prisma.produto.update({
           where: { id: item.produtoId },
           data: {
@@ -155,14 +177,14 @@ async function deleteHandler(request: NextRequest, { params, context }: { params
             tipo: 'ENTRADA',
             quantidade: item.quantidade,
             observacao: `Estorno de venda - Pedido ${id}`,
-            empresaId: context.empresaId,
+            empresaId,
           },
         });
       }
     }
 
     await prisma.itemPedido.deleteMany({ where: { pedidoId: id } });
-    await prisma.pedido.delete({ where: { id, empresaId: context.empresaId } });
+    await prisma.pedido.delete({ where: { id, empresaId } });
 
     return NextResponse.json({ message: 'Pedido excluído com sucesso.' });
   } catch (error) {
@@ -172,16 +194,19 @@ async function deleteHandler(request: NextRequest, { params, context }: { params
 }
 
 export const GET = withAuth(
-  (req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) => getHandler(req, { params, context }),
+  (req: NextRequest, context: AuthContext, routeContext?: { params: { id: string } }) =>
+    getHandler(req, context, routeContext?.params),
   { requireCompany: true }
 );
 
 export const PUT = withAuth(
-  (req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) => putHandler(req, { params, context }),
+  (req: NextRequest, context: AuthContext, routeContext?: { params: { id: string } }) =>
+    putHandler(req, context, routeContext?.params),
   { requireCompany: true }
 );
 
 export const DELETE = withAuth(
-  (req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) => deleteHandler(req, { params, context }),
+  (req: NextRequest, context: AuthContext, routeContext?: { params: { id: string } }) =>
+    deleteHandler(req, context, routeContext?.params),
   { requireCompany: true }
 );

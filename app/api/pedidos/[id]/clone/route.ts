@@ -62,6 +62,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
             descricao: item.descricao,
             quantidade: item.quantidade,
             precoUnitario: item.precoUnitario,
+            subtotal: item.subtotal,
           },
         });
       }
@@ -88,4 +89,3 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ message: 'Erro ao clonar o pedido.' }, { status: 500 });
   }
 }
-

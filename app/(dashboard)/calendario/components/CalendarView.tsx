@@ -1,16 +1,23 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Calendar, dateFnsLocalizer, View } from 'react-big-calendar';
+import withDragAndDrop, { EventInteractionArgs } from 'react-big-calendar/lib/addons/dragAndDrop';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 import { CalendarEvent } from '@/app/lib/definitions';
+
+type CalendarDisplayEvent = Omit<CalendarEvent, 'start' | 'end'> & {
+  start: Date;
+  end: Date;
+};
 
 // 1. Definição das Props do Componente
 interface CalendarViewProps {
   events: CalendarEvent[];
-  onEventUpdate: (eventId: string, updates: { start: Date, end: Date }) => void;
+  onEventUpdate: (eventId: string, updates: { start: string; end: string }) => void;
   onSelectSlot: (slotInfo: { start: Date, end: Date }) => void;
   onSelectEvent: (event: CalendarEvent) => void;
   date: Date;
@@ -20,7 +27,9 @@ interface CalendarViewProps {
 }
 
 // 2. O Componente Principal
-const CalendarView: React.FC<CalendarViewProps> = ({ 
+const DnDCalendar = withDragAndDrop<CalendarDisplayEvent>(Calendar);
+
+const CalendarView: React.FC<CalendarViewProps> = ({
   events, 
   onEventUpdate, 
   onSelectSlot, 
@@ -42,29 +51,32 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   });
 
   // 4. Função Auxiliar para formatar os eventos (movido para dentro do componente)
-  const formatEventsForCalendar = (events: CalendarEvent[]) => {
+  const formattedEvents = useMemo<CalendarDisplayEvent[]>(() => {
     if (!events) return [];
     return events.map(event => ({
       ...event,
       start: new Date(event.start),
       end: new Date(event.end),
     }));
+  }, [events]);
+
+  const handleEventDrop = ({ event, start, end }: EventInteractionArgs<CalendarDisplayEvent>) => {
+    const normalizedStart = typeof start === 'string' ? new Date(start) : start;
+    const normalizedEnd = typeof end === 'string' ? new Date(end) : end;
+    onEventUpdate(event.id, { start: normalizedStart.toISOString(), end: normalizedEnd.toISOString() });
   };
 
-  const formattedEvents = formatEventsForCalendar(events);
-
-  const handleEventDrop = (data: any) => {
-    const { event, start, end } = data;
-    onEventUpdate(event.id, { start, end });
+  const handleSelectEvent = (event: CalendarDisplayEvent) => {
+    onSelectEvent({
+      ...event,
+      start: event.start.toISOString(),
+      end: event.end.toISOString(),
+    });
   };
-
-  const handleSelectEvent = (event: any) => {
-    onSelectEvent(event as CalendarEvent);
-  }
 
   return (
     <div className="h-[70vh]">
-      <Calendar
+      <DnDCalendar
         localizer={localizer}
         events={formattedEvents}
         startAccessor="start"

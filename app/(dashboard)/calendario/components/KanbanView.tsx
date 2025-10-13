@@ -23,14 +23,16 @@ const KanbanColumn = ({ stage, events, onStageUpdate, onStageDelete, isVirtual =
   const { setNodeRef } = useSortable({ id: stage.id, data: { type: 'column' } });
   const [isEditing, setIsEditing] = useState(false);
   const [stageName, setStageName] = useState(stage.nome);
-  const [stageCapacity, setStageCapacity] = useState(stage.capacidade);
+  const [stageCapacity, setStageCapacity] = useState<string>(stage.capacidade?.toString() ?? '');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const usedCapacity = useMemo(() => events.reduce((acc, event) => acc + ((new Date(event.end).getTime() - new Date(event.start).getTime()) / (1000 * 60 * 60)), 0), [events]);
+  const capacityValue = stage.capacidade ?? 0;
 
   const handleUpdate = () => {
-    if (!isVirtual && onStageUpdate && (stageName.trim() !== stage.nome || stageCapacity !== stage.capacidade)) {
-      onStageUpdate(stage.id, { nome: stageName.trim(), capacidade: Number(stageCapacity) });
+    const normalizedCapacity = stageCapacity.trim() === '' ? null : Number(stageCapacity);
+    if (!isVirtual && onStageUpdate && (stageName.trim() !== stage.nome || normalizedCapacity !== stage.capacidade)) {
+      onStageUpdate(stage.id, { nome: stageName.trim(), capacidade: normalizedCapacity });
     }
     setIsEditing(false);
   };
@@ -56,12 +58,12 @@ const KanbanColumn = ({ stage, events, onStageUpdate, onStageDelete, isVirtual =
         )}
       </div>
       {isEditing && (
-          <div className="mb-2"><label className="text-xs text-gray-500">Capacidade (horas)</label><input type="number" value={stageCapacity} onChange={(e) => setStageCapacity(Number(e.target.value))} onBlur={handleUpdate} onKeyDown={(e) => e.key === 'Enter' && handleUpdate()} className="text-sm bg-white border rounded px-1 w-full mt-1" /></div>
+          <div className="mb-2"><label className="text-xs text-gray-500">Capacidade (horas)</label><input type="number" value={stageCapacity} onChange={(e) => setStageCapacity(e.target.value)} onBlur={handleUpdate} onKeyDown={(e) => e.key === 'Enter' && handleUpdate()} className="text-sm bg-white border rounded px-1 w-full mt-1" /></div>
       )}
       <div className="flex items-center gap-2 text-xs text-gray-500 mb-3 px-1">
         <Clock className="w-4 h-4" />
-        <span>{usedCapacity.toFixed(1)}h / {stage.capacidade}h</span>
-        <div className="w-full bg-gray-200 rounded-full h-1.5"><div className="h-1.5 rounded-full" style={{ width: `${Math.min((usedCapacity / stage.capacidade) * 100, 100)}%`, backgroundColor: usedCapacity > stage.capacidade ? '#ef4444' : '#3b82f6' }}></div></div>
+        <span>{usedCapacity.toFixed(1)}h / {stage.capacidade ?? '∞'}h</span>
+        <div className="w-full bg-gray-200 rounded-full h-1.5"><div className="h-1.5 rounded-full" style={{ width: `${capacityValue > 0 ? Math.min((usedCapacity / capacityValue) * 100, 100) : 0}%`, backgroundColor: capacityValue > 0 && usedCapacity > capacityValue ? '#ef4444' : '#3b82f6' }}></div></div>
       </div>
       <SortableContext items={events.map(e => e.id)}><div className="flex flex-col min-h-[100px]">{events.map(event => <TaskCard key={event.id} event={event} />)}</div></SortableContext>
     </div>
@@ -102,7 +104,15 @@ const KanbanView: React.FC<KanbanViewProps> = ({ events, stages, onEventUpdate, 
   };
   const handleDragEnd = () => setActiveEvent(null);
 
-  const uncategorizedStage: KanbanStage = { id: 'uncategorized', nome: 'Sem Categoria', capacidade: uncategorizedEvents.reduce((acc, event) => acc + ((new Date(event.end).getTime() - new Date(event.start).getTime()) / (1000 * 60 * 60)), 0), createdAt: new Date(), updatedAt: new Date(), ordem: -1, organizacaoId: '' };
+  const uncategorizedStage: KanbanStage = {
+    id: 'uncategorized',
+    nome: 'Sem Categoria',
+    capacidade: uncategorizedEvents.reduce((acc, event) => acc + ((new Date(event.end).getTime() - new Date(event.start).getTime()) / (1000 * 60 * 60)), 0),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    ordem: -1,
+    organizacaoId: ''
+  };
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>

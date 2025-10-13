@@ -1,13 +1,18 @@
-'use client';
-
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
 import { withAuth, AuthContext } from '@/app/lib/auth';
 
 // PUT /api/calendario/[id] - Atualizar um evento
-async function putHandler(req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) {
+async function putHandler(
+  req: NextRequest,
+  context: AuthContext,
+  routeContext?: { params: { id: string } }
+) {
   try {
-    const { id } = params;
+    const id = routeContext?.params?.id;
+    if (!id) {
+      return NextResponse.json({ error: 'ID do evento não informado' }, { status: 400 });
+    }
     const body = await req.json();
 
     const event = await prisma.calendarEvent.findFirst({
@@ -31,9 +36,16 @@ async function putHandler(req: NextRequest, { params }: { params: { id: string }
 }
 
 // DELETE /api/calendario/[id] - Excluir um evento
-async function deleteHandler(req: NextRequest, { params }: { params: { id: string } }, context: AuthContext) {
+async function deleteHandler(
+  req: NextRequest,
+  context: AuthContext,
+  routeContext?: { params: { id: string } }
+) {
   try {
-    const { id } = params;
+    const id = routeContext?.params?.id;
+    if (!id) {
+      return NextResponse.json({ error: 'ID do evento não informado' }, { status: 400 });
+    }
 
     const event = await prisma.calendarEvent.findFirst({
       where: { id, organizacaoId: context.organizacaoId },

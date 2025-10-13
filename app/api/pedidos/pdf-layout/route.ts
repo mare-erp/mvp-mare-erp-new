@@ -32,8 +32,6 @@ export const POST = withAuth(
             select: {
               nome: true,
               cnpj: true,
-              logoUrl: true,
-              endereco: true,
               cep: true,
               rua: true,
               numero: true,
@@ -122,13 +120,48 @@ function generatePdfHtml(pedido: any): string {
     RECUSADO: 'Recusado'
   };
 
+  const statusLabel = statusLabels[pedido.status as keyof typeof statusLabels] ?? pedido.status;
+
+  const empresaLogo =
+    'logoUrl' in pedido.empresa ? (pedido.empresa as { logoUrl?: string | null }).logoUrl ?? null : null;
+
+  const empresaEndereco =
+    'endereco' in pedido.empresa && (pedido.empresa as { endereco?: string | null }).endereco
+      ? (pedido.empresa as { endereco?: string | null }).endereco
+      : [
+          pedido.empresa.rua,
+          pedido.empresa.numero,
+          pedido.empresa.complemento,
+          pedido.empresa.bairro,
+          pedido.empresa.cidade,
+          pedido.empresa.uf,
+          pedido.empresa.cep ? `CEP: ${pedido.empresa.cep}` : null
+        ]
+          .filter(Boolean)
+          .join(', ');
+
+  const clienteEndereco =
+    'endereco' in pedido.cliente && (pedido.cliente as { endereco?: string | null }).endereco
+      ? (pedido.cliente as { endereco?: string | null }).endereco
+      : [
+          pedido.cliente.rua,
+          pedido.cliente.numero,
+          pedido.cliente.complemento,
+          pedido.cliente.bairro,
+          pedido.cliente.cidade,
+          pedido.cliente.uf,
+          pedido.cliente.cep ? `CEP: ${pedido.cliente.cep}` : null
+        ]
+          .filter(Boolean)
+          .join(', ');
+
   return `
     <!DOCTYPE html>
     <html lang="pt-BR">
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${statusLabels[pedido.status]} ${pedido.numeroPedido}</title>
+      <title>${statusLabel} ${pedido.numeroPedido}</title>
       <style>
         * {
           margin: 0;
@@ -337,11 +370,11 @@ function generatePdfHtml(pedido: any): string {
         <!-- Header -->
         <div class="header">
           <div class="company-info">
-            ${pedido.empresa.logoUrl ? `<img src="${pedido.empresa.logoUrl}" alt="${pedido.empresa.nome}" class="company-logo">` : ''}
+            ${empresaLogo ? `<img src="${empresaLogo}" alt="${pedido.empresa.nome}" class="company-logo">` : ''}
             <div class="company-name">${pedido.empresa.nome}</div>
             <div class="company-details">
               ${pedido.empresa.cnpj ? `CNPJ: ${pedido.empresa.cnpj}<br>` : ''}
-              ${pedido.empresa.endereco || [pedido.empresa.rua, pedido.empresa.numero, pedido.empresa.bairro].filter(Boolean).join(', ')}<br>
+              ${empresaEndereco}<br>
               ${[pedido.empresa.cidade, pedido.empresa.uf, pedido.empresa.cep].filter(Boolean).join(' - ')}<br>
               ${pedido.empresa.telefone ? `Tel: ${pedido.empresa.telefone}<br>` : ''}
               ${pedido.empresa.email ? `Email: ${pedido.empresa.email}` : ''}
@@ -349,7 +382,7 @@ function generatePdfHtml(pedido: any): string {
           </div>
           
           <div class="document-info">
-            <div class="document-title">${statusLabels[pedido.status]} Nº ${pedido.numeroPedido}</div>
+            <div class="document-title">${statusLabel} Nº ${pedido.numeroPedido}</div>
             <div class="document-number">Data: ${formatDate(pedido.dataPedido)}</div>
             ${pedido.validadeOrcamento ? `<div class="document-date">Validade: ${formatDate(pedido.validadeOrcamento)}</div>` : ''}
             ${pedido.dataEntrega ? `<div class="document-date">Entrega: ${formatDate(pedido.dataEntrega)}</div>` : ''}
@@ -364,14 +397,13 @@ function generatePdfHtml(pedido: any): string {
             ${pedido.cliente.cpfCnpj ? `<div>${pedido.cliente.tipoPessoa === 'JURIDICA' ? 'CNPJ' : 'CPF'}: ${pedido.cliente.cpfCnpj}</div>` : ''}
             ${pedido.cliente.email ? `<div>Email: ${pedido.cliente.email}</div>` : ''}
             ${pedido.cliente.telefone ? `<div>Telefone: ${pedido.cliente.telefone}</div>` : ''}
-            ${pedido.cliente.endereco || [pedido.cliente.rua, pedido.cliente.numero, pedido.cliente.bairro, pedido.cliente.cidade, pedido.cliente.uf, pedido.cliente.cep].filter(Boolean).length > 0 ? 
-              `<div>Endereço: ${[pedido.cliente.rua, pedido.cliente.numero, pedido.cliente.bairro, pedido.cliente.cidade, pedido.cliente.uf, pedido.cliente.cep].filter(Boolean).join(', ')}</div>` : ''}
+            ${clienteEndereco ? `<div>Endereço: ${clienteEndereco}</div>` : ''}
           </div>
         </div>
         
         <!-- Itens -->
         <div class="section">
-          <div class="section-title">Itens do ${statusLabels[pedido.status]}</div>
+          <div class="section-title">Itens do ${statusLabel}</div>
           <table class="items-table">
             <thead>
               <tr>

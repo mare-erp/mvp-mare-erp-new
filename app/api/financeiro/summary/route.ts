@@ -6,6 +6,9 @@ import { StatusTransacao, TipoTransacao } from '@prisma/client';
 async function getHandler(request: NextRequest, context: AuthContext) {
   try {
     const { empresaId } = context;
+    if (!empresaId) {
+      return NextResponse.json({ error: 'Empresa não selecionada' }, { status: 400 });
+    }
 
     const hoje = new Date();
     const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
@@ -36,10 +39,15 @@ async function getHandler(request: NextRequest, context: AuthContext) {
         where: { empresaId, status: StatusTransacao.PENDENTE, dataVencimento: { lte: proximaSemana, gte: hoje } },
     });
 
+    const totalReceber = Number(aReceber._sum.valor ?? 0);
+    const totalPagar = Number(aPagar._sum.valor ?? 0);
+    const totalReceitasMes = Number(receitasPagasMes._sum.valor ?? 0);
+    const totalDespesasMes = Number(despesasPagasMes._sum.valor ?? 0);
+
     const summary = {
-      aReceber: aReceber._sum.valor || 0,
-      aPagar: aPagar._sum.valor || 0,
-      saldoMes: (receitasPagasMes._sum.valor || 0) - (despesasPagasMes._sum.valor || 0),
+      aReceber: totalReceber,
+      aPagar: totalPagar,
+      saldoMes: totalReceitasMes - totalDespesasMes,
       contasVencendo: contasVencendo || 0,
     };
 

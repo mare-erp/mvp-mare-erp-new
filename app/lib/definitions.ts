@@ -23,6 +23,10 @@ export type KanbanStage = {
   id: string;
   nome: string;
   ordem: number;
+  capacidade?: number | null;
+  createdAt?: string;
+  updatedAt?: string;
+  organizacaoId?: string;
 };
 
 export type CalendarUser = {

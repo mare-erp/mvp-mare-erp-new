@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
           id: emp.id,
           nome: emp.nome,
           cnpj: emp.cnpj,
-          logoUrl: emp.logoUrl
+          logoUrl: 'logoUrl' in emp ? (emp as { logoUrl?: string | null }).logoUrl ?? null : null
         }))
       },
       role: primeiraOrganizacao.role,
@@ -144,4 +144,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
