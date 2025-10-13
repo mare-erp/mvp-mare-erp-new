@@ -41,8 +41,7 @@ server {
     listen [::]:80;
     server_name mareerp.com.br www.mareerp.com.br app.mareerp.com.br;
 
-    # Redirect HTTP to HTTPS (uncomment when TLS enabled)
-    # return 301 https://$host$request_uri;
+    return 301 https://app.mareerp.com.br$request_uri;
 }
 
 server {
